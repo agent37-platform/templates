@@ -7,7 +7,6 @@ The Dockerfiles behind every [Agent37](https://www.agent37.com) system template.
 | Template | Image | Clean base for your own builds | Source |
 | --- | --- | --- | --- |
 | `agent37-hermes` | `hermes` | `hermes-base` | [`images/b2b/hermes`](images/b2b/hermes) |
-| `agent37-hermes-small` | `hermes-small` | `hermes-base` | [`images/b2b/hermes`](images/b2b/hermes) |
 | `agent37-openclaw` | `openclaw` | `openclaw-base` | [`images/b2b/openclaw`](images/b2b/openclaw) |
 | `agent37-claude-code` | `claude-code` | `claude-code-base` | [`images/b2b/claude-code`](images/b2b/claude-code) |
 | `agent37-codex` | `codex` | `codex-base` | [`images/b2b/codex`](images/b2b/codex) |
