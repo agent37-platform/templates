@@ -52,7 +52,7 @@ RUN apt-get update \
 
 # Preinstall uv so instruction-only Python skills that rely on `uv run`
 # work immediately without waiting for optional Homebrew bootstrap.
-ARG UV_VERSION=0.12.17
+ARG UV_VERSION=0.12.22
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
     | env UV_UNMANAGED_INSTALL="/usr/local/bin" sh \
   && command -v uv >/dev/null 2>&1 \
@@ -62,7 +62,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # exactly this binary (PI_BIN below), never a copy a user installs into the user-first PATH.
 # --ignore-scripts is upstream's own recommended install: it skips dependency install scripts,
 # and the published package declares none of its own.
-ARG PI_VERSION=0.87.1
+ARG PI_VERSION=1.0.0
 RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund --ignore-scripts "@earendil-works/pi-coding-agent@${PI_VERSION}" \
   && npm cache clean --force \
   && rm -rf /home/node/.cache /home/node/.npm \

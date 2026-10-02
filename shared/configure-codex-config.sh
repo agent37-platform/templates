@@ -51,12 +51,13 @@ if [ -f "${BASE_CONFIG}" ]; then
   BASE_TOML="$(cat "${BASE_CONFIG}")"
 else
   # Fallback so a headless terminal still never blocks on approvals if the seed is missing.
-  BASE_TOML=$'approval_policy = "never"\nsandbox_mode = "danger-full-access"\nexperimental_use_rmcp_client = true'
+  BASE_TOML=$'approval_policy = "never"\nsandbox_mode = "danger-full-access"'
 fi
 # Only the seed's key lines go into config.toml (its comments are for readers of this repo);
-# the root keys this script owns are exactly those.
+# the root keys this script owns are exactly those, plus experimental_use_rmcp_client, which
+# older images seeded and Codex >= 0.156 warns about at startup, so it is still stripped.
 BASE_KEYS="$(printf '%s\n' "${BASE_TOML}" | sed -n '/^[[:space:]]*[A-Za-z0-9_-][A-Za-z0-9_-]*[[:space:]]*=/p')"
-MANAGED_ROOT_KEYS="$(printf '%s\n' "${BASE_KEYS}" | sed -n 's/^[[:space:]]*\([A-Za-z0-9_-]*\)[[:space:]]*=.*/\1/p' | tr '\n' ' ')"
+MANAGED_ROOT_KEYS="$(printf '%s\n' "${BASE_KEYS}" | sed -n 's/^[[:space:]]*\([A-Za-z0-9_-]*\)[[:space:]]*=.*/\1/p' | tr '\n' ' ') experimental_use_rmcp_client"
 
 # The customer's half of config.toml, split into the root section (keys before the first
 # table header, which TOML requires to come first) and the tables, minus what we own:

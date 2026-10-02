@@ -9,7 +9,3 @@
 # container is the sandbox (decision 6), so a turn must never block on an approval prompt.
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
-
-# Reach the managed Composio server (a streamable-HTTP MCP server added below at boot with a
-# url + http_headers) through Codex's rmcp client. Harmless when no HTTP MCP server is set.
-experimental_use_rmcp_client = true

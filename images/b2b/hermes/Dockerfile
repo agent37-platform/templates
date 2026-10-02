@@ -38,7 +38,7 @@ RUN apt-get update \
 
 # Preinstall uv so instruction-only Python skills that rely on `uv run`
 # work immediately without waiting for optional Homebrew bootstrap.
-ARG UV_VERSION=0.12.17
+ARG UV_VERSION=0.12.22
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
     | env UV_UNMANAGED_INSTALL="/usr/local/bin" sh \
   && command -v uv >/dev/null 2>&1 \
@@ -53,7 +53,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # `hermes update` performs on non-Docker installs; the install dir sits outside /home/node so the
 # persisted volume cannot mask the interpreter. The version check fails the build if the installer ever
 # falls back to the system interpreter.
-ARG HERMES_VERSION=v2026.9.21
+ARG HERMES_VERSION=v2026.9.24
 ARG UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python
 RUN install -d -o node -g node /usr/local/lib/hermes /home/node/.hermes /home/node/.local/bin "${UV_PYTHON_INSTALL_DIR}" \
   && touch /home/node/.bashrc \
@@ -210,7 +210,7 @@ RUN npm install -g "playwright@${PLAYWRIGHT_VERSION}" \
 # Chromium's own sandbox cannot start under gVisor.
 # /usr/local, not the image's NPM_CONFIG_PREFIX: that points into /home/node, which the
 # persisted home volume masks at runtime.
-ARG AGENT_BROWSER_VERSION=0.38.1
+ARG AGENT_BROWSER_VERSION=0.38.2
 RUN NPM_CONFIG_PREFIX=/usr/local npm install -g "agent-browser@${AGENT_BROWSER_VERSION}" \
   && /usr/local/bin/agent-browser --version
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium

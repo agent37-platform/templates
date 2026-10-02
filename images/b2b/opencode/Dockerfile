@@ -48,7 +48,7 @@ RUN apt-get update \
 
 # Preinstall uv so instruction-only Python skills that rely on `uv run`
 # work immediately without waiting for optional Homebrew bootstrap.
-ARG UV_VERSION=0.12.17
+ARG UV_VERSION=0.12.22
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
     | env UV_UNMANAGED_INSTALL="/usr/local/bin" sh \
   && command -v uv >/dev/null 2>&1 \
@@ -60,7 +60,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # gateway spawns exactly this binary (OPENCODE_BIN below), never a copy a user drops into the
 # user-first PATH.
 ARG TARGETARCH
-ARG OPENCODE_VERSION=1.18.32
+ARG OPENCODE_VERSION=1.18.34
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && case "${arch}" in \
        amd64|x86_64) oc_arch="x64" ;; \
