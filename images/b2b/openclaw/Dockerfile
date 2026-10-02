@@ -46,7 +46,7 @@ RUN apt-get update \
 
 # Preinstall uv so instruction-only Python skills that rely on `uv run`
 # work immediately without waiting for optional Homebrew bootstrap.
-ARG UV_VERSION=0.12.17
+ARG UV_VERSION=0.12.22
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
     | env UV_UNMANAGED_INSTALL="/usr/local/bin" sh \
   && command -v uv >/dev/null 2>&1 \
@@ -63,11 +63,9 @@ RUN npm install -g "playwright@${PLAYWRIGHT_VERSION}" \
   && chmod -R a+rX "${PLAYWRIGHT_BROWSERS_PATH}"
 
 # Install OpenClaw version globally so it keeps working when /home/node is a persisted volume.
-# Pinned to 2026.9.4: 2026.9.5 moved to @openclaw/fs-safe 0.13 whose native helper acquires the
-# gateway state lock with openat2(RESOLVE_BENEATH) and never falls back, so under gVisor (no
-# openat2, ENOSYS) the gateway crash-loops on every boot. Remove this pin once
-# https://github.com/openclaw/openclaw/issues/152839 (fs-safe#572) ships in an OpenClaw release.
-ARG OPENCLAW_VERSION=2026.9.4
+# Never below 2026.9.7 again: 2026.9.5 and 9.6 take the gateway state lock with openat2, which
+# gVisor lacks (ENOSYS), and crash-loop on every boot (openclaw/openclaw#152839, fixed in 9.7).
+ARG OPENCLAW_VERSION=2026.9.7
 RUN echo "Installing OpenClaw ${OPENCLAW_VERSION}" \
   && curl -fsSL https://openclaw.ai/install.sh | bash -s -- \
     --install-method npm \
@@ -81,12 +79,12 @@ RUN echo "Installing OpenClaw ${OPENCLAW_VERSION}" \
 # OpenClaw >= 2026.8.1 treats a 9p filesystem as a cross-VM share and forces its SQLite
 # databases into rollback journaling (readers block writers). Every mount inside a gVisor
 # sandbox reports 9p, but it is a same-kernel passthrough, so WAL is safe there. Take 9p off
-# the check; the virtiofs/nfs/smb guards stay. The bundler inlines the check into three dist files
-# in 2026.9.4 (four as of 2026.9.5). Each edit must hit exactly once per file, so a future
-# release that moves the code fails the build instead of silently shipping unpatched.
+# the check; the virtiofs/nfs/smb guards stay. The bundler inlines the check into seven dist files
+# in 2026.9.7. Each edit must hit exactly once per file, so a future release that moves the code
+# fails the build instead of silently shipping unpatched.
 RUN set -eu; dist="$(npm root -g)/openclaw/dist"; \
   files="$(grep -rlE 'LINUX_V9FS_SUPER_MAGIC|CROSS_VM_FILESYSTEM_TYPES' "${dist}" | grep -v control-ui)"; \
-  [ "$(printf '%s\n' ${files} | wc -l)" -eq 3 ] || { echo "expected 3 files with the 9p check, got: ${files}" >&2; exit 1; }; \
+  [ "$(printf '%s\n' ${files} | wc -l)" -eq 7 ] || { echo "expected 7 files with the 9p check, got: ${files}" >&2; exit 1; }; \
   for f in ${files}; do \
     for pat in 'LINUX_V9FS_SUPER_MAGIC ?= ?16914839' '\.startsWith\(["`]9p["`]\)' '["`]9p["`],' '["`]9p2000\.l["`]'; do \
       [ "$(grep -cE "${pat}" "${f}")" -eq 1 ] || { echo "pattern ${pat} not found exactly once in ${f}" >&2; exit 1; }; \
