@@ -19,7 +19,7 @@ This repo is public. Never commit a secret, a customer name, or an internal URL.
 
 | Path | What | `images.json` key | GHCR packages |
 | --- | --- | --- | --- |
-| `images/b2b/hermes/` | `agent37-hermes`, `agent37-hermes-small` | `b2b-hermes` | `hermes-base`, `hermes-small`, `hermes` |
+| `images/b2b/hermes/` | `agent37-hermes` | `b2b-hermes` | `hermes-base`, `hermes` |
 | `images/b2b/openclaw/` | `agent37-openclaw` | `b2b-openclaw` | `openclaw-base`, `openclaw` |
 | `images/b2b/claude-code/` | `agent37-claude-code` | `b2b-claude-code` | `claude-code-base`, `claude-code` |
 | `images/b2b/codex/` | `agent37-codex` | `b2b-codex` | `codex-base`, `codex` |

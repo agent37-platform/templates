@@ -20,8 +20,8 @@ Publish an Agent37 template image to GHCR, then tag the commit it was built from
 Usage: ./scripts/publish-image.sh <image> [flags]
 
 Images (key in images.json; Dockerfile under images/<dir>/):
-  b2b-hermes    images/b2b/hermes/. Pushes hermes-base (--target base),
-                  hermes-small (--target small), and hermes (--target full)
+  b2b-hermes    images/b2b/hermes/. Pushes hermes-base (--target base)
+                  and hermes (--target full)
   b2b-openclaw  images/b2b/openclaw/. Pushes openclaw-base and openclaw
   b2b-claude-code  images/b2b/claude-code/. Pushes claude-code-base and claude-code
   b2b-codex     images/b2b/codex/. Pushes codex-base and codex
@@ -66,7 +66,7 @@ PLATFORM="linux/amd64"
 case "${IMAGE_KEY}" in
   b2b-hermes)
     IMAGE_DIR="b2b/hermes"
-    PACKAGES=("hermes-base:base" "hermes-small:small" "hermes:full")
+    PACKAGES=("hermes-base:base" "hermes:full")
     ;;
   b2b-claude-code)
     IMAGE_DIR="b2b/claude-code"

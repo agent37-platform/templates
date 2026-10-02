@@ -1,20 +1,16 @@
 # syntax=docker/dockerfile:1
-# Agents API v1 runtime images. One multi-stage build; the publish script pushes three of
-# the four targets (core is internal, the lean shared ancestor):
+# Agents API v1 runtime images. One multi-stage build; the publish script pushes two of
+# the three targets (core is internal, the shared ancestor):
 #   core  -> (not published) Clean Hermes + the Agent37 gateway (chat adapter) on 3737, the
-#            terminal and file browser, and the CLI toolbelt. NO browser/desktop stack. Both
-#            the lean small image and the full base build FROM here.
-#   small -> ghcr.io/agent37-platform/hermes-small  The agent37-hermes-small system template:
-#            core + managed starter-credential config + Brave/Composio. No browser, no desktop;
-#            keeps the Hermes dashboard (9119). Lean for the 1 vCPU / 2 GB sub-floor tier.
+#            terminal and file browser, and the CLI toolbelt. NO browser/desktop stack.
 #   base  -> ghcr.io/agent37-platform/hermes-base   Clean Hermes + gateway + browser/desktop.
 #            The FROM target for customer custom templates; no managed LLM injection, no
 #            agent37 integrations. Run locally it is plain Hermes; the customer
 #            supplies LLM credentials.
 #   full  -> ghcr.io/agent37-platform/hermes        The agent37-hermes system template:
 #            base + managed starter-credential, Brave, and Composio configuration.
-# Build context is docker/ so every stage shares shared/. Tags come from docker/images.json;
-# publish via scripts/publish-image.sh b2b-hermes (pushes base, small, and full at one tag).
+# Build context is the repo root so every stage shares shared/. Tags come from images.json;
+# publish via scripts/publish-image.sh b2b-hermes (pushes base and full at one tag).
 FROM node:24-bookworm AS core
 
 USER root
@@ -170,58 +166,13 @@ USER node
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
-# Reusable managed layer: starter-credential configuration plus Brave and Composio integrations,
-# driven by the platform's starter credentials passed as env at runtime. Duplicated into
-# small (lean, FROM core) and full (FROM base) — linear stages can't graft an orthogonal
-# layer onto two different ancestors.
-FROM core AS small
-
-USER root
-
-ENV AGENT37_MANAGED_INTEGRATIONS=1
-
-COPY shared/hermes-plugins/agent37-brave/ /usr/local/lib/hermes/plugins/agent37-brave/
-RUN uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python /usr/local/lib/hermes/plugins/agent37-brave \
-  && /usr/local/lib/hermes/hermes-agent/venv/bin/python - <<'PY'
-import importlib.metadata
-
-entry_points = importlib.metadata.entry_points()
-if hasattr(entry_points, "select"):
-    plugins = {ep.name for ep in entry_points.select(group="hermes_agent.plugins")}
-else:
-    plugins = {ep.name for ep in entry_points.get("hermes_agent.plugins", [])}
-
-required = {"agent37-brave", "agent37-environment"}
-missing = required - plugins
-if missing:
-    raise SystemExit(f"missing Hermes plugin entry points: {sorted(missing)}")
-PY
-
-# Managed LLM injection: the entrypoint runs this updater at boot to point Hermes at the
-# platform's starter-credential proxy. Its absence is what makes base clean.
-RUN install -d -m 0755 /usr/local/lib/agent37
-COPY --chmod=0644 shared/configure-hermes-config.py /usr/local/lib/agent37/configure-hermes-config.py
-
-# The agent37 CLI: `cron` works on every instance, `expose` only on consumer ones (the
-# starter endpoint 403s a B2B token). Managed stage only, so the clean base stays clean.
-COPY --chmod=0755 shared/agent37-cli.js /usr/local/bin/agent37
-RUN install -d -m 0755 /usr/local/lib/hermes/skills/agent37-cron
-COPY --chmod=0644 shared/hermes-skills/agent37-cron/SKILL.md /usr/local/lib/hermes/skills/agent37-cron/SKILL.md
-
-# Lean tier keeps the Hermes dashboard (9119): it is a plain web server and needs no display
-# stack. Only the browser/desktop tools are absent, so the entrypoint auto-skips those on the
-# missing Xvfb/openbox.
-EXPOSE 9119
-
-USER node
-
 FROM core AS base
 
 USER root
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Browser + desktop stack: this is what the lean small image leaves out.
+# Browser + desktop stack.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     chromium \
