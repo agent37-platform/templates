@@ -11,7 +11,7 @@
 #
 # Build context is docker/ so it shares shared/. Tag comes from docker/images.json; publish via
 # scripts/publish-image.sh consumer-openclaw. Bump OPENCLAW_BASE_TAG together with b2b-openclaw.
-ARG OPENCLAW_BASE_TAG=2026.10.02b
+ARG OPENCLAW_BASE_TAG=2026.09.27b
 FROM ghcr.io/agent37-platform/openclaw:${OPENCLAW_BASE_TAG}
 
 USER root
