@@ -4,9 +4,9 @@
   "b2b-grok": "2026.10.02a",
   "b2b-hermes": "2026.10.02a",
   "b2b-n8n": "2026.10.02a",
-  "b2b-openclaw": "2026.10.02b",
+  "b2b-openclaw": "2026.09.27b",
   "b2b-opencode": "2026.10.02a",
   "b2b-pi": "2026.10.02a",
   "consumer-app": "2026.10.02a",
-  "consumer-openclaw": "2026.10.02b"
+  "consumer-openclaw": "2026.09.27b"
 }
