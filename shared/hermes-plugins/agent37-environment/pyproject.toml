@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent37-hermes-environment"
+version = "0.1.0"
+description = "Agent37 environment context plugin for Hermes"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.entry-points."hermes_agent.plugins"]
+agent37-environment = "agent37_hermes_environment"
+
+[tool.setuptools.packages.find]
+include = ["agent37_hermes_environment"]
+
+[tool.setuptools.package-data]
+agent37_hermes_environment = ["plugin.yaml"]

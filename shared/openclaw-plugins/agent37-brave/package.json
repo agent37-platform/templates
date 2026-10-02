@@ -1,0 +1,11 @@
+{
+  "name": "@agent37/agent37-brave",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  }
+}

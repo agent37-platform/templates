@@ -1,0 +1,13 @@
+{
+  "id": "agent37-environment",
+  "name": "Agent37 Environment",
+  "description": "Tells the agent it is running inside Agent37 and lists platform-specific capabilities.",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

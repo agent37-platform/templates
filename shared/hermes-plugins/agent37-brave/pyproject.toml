@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent37-hermes-brave"
+version = "0.1.0"
+description = "Agent37 Brave Search plugin for Hermes"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "httpx>=0.28.1,<1",
+]
+
+[project.entry-points."hermes_agent.plugins"]
+agent37-brave = "agent37_hermes_brave"
+
+[tool.setuptools.packages.find]
+include = ["agent37_hermes_brave"]
+
+[tool.setuptools.package-data]
+agent37_hermes_brave = ["plugin.yaml"]

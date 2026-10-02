@@ -1,0 +1,3 @@
+name: agent37-environment
+version: "0.1.0"
+description: Tells the agent it is running inside Agent37 and lists platform-specific capabilities

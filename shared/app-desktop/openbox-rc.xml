@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <applications>
+    <application class="*">
+      <maximized>yes</maximized>
+      <decor>no</decor>
+    </application>
+  </applications>
+  <!-- One desktop: the taskbar shows one desktop's windows, and a second desktop would only
+       ever look like every window vanished. -->
+  <desktops>
+    <number>1</number>
+  </desktops>
+  <!-- No window decorations, so minimized windows come back from the tint2 taskbar or Alt-Tab. -->
+  <keyboard>
+    <keybind key="A-Tab">
+      <action name="NextWindow">
+        <allDesktops>yes</allDesktops>
+        <finalactions>
+          <action name="Focus"/>
+          <action name="Raise"/>
+          <action name="Unshade"/>
+        </finalactions>
+      </action>
+    </keybind>
+  </keyboard>
+</openbox_config>

@@ -1,0 +1,13 @@
+{
+  "id": "agent37-browser",
+  "name": "Agent37 Browser",
+  "description": "Browser profile defaults for managed OpenClaw instances.",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

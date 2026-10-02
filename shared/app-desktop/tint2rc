@@ -1,0 +1,58 @@
+# Taskbar for the consumer desktop: one thin bar along the bottom listing every window on the
+# single desktop, minimized ones included, so a click brings a window back. Colors follow the
+# desktop wallpaper (#F6F1E8). Loaded by app-desktop.sh with -c, never from ~/.config.
+
+# Background 1: the panel
+rounded = 0
+border_width = 0
+background_color = #ECE6DA 100
+border_color = #D6CFC2 100
+
+# Background 2: the active window's button
+rounded = 4
+border_width = 0
+background_color = #FFFFFF 100
+border_color = #D6CFC2 100
+
+# Background 3: other windows' buttons
+rounded = 4
+border_width = 0
+background_color = #F6F1E8 100
+border_color = #D6CFC2 100
+
+panel_items = T
+panel_size = 100% 36
+panel_position = bottom center horizontal
+panel_layer = top
+panel_background_id = 1
+panel_padding = 6 3 6
+panel_monitor = all
+strut_policy = follow_size
+autohide = 0
+panel_window_name = tint2
+disable_transparency = 1
+font_shadow = 0
+
+taskbar_mode = single_desktop
+taskbar_padding = 0 0 4
+taskbar_background_id = 0
+taskbar_name = 0
+
+task_text = 1
+task_icon = 1
+task_centered = 0
+task_maximum_size = 240 30
+task_padding = 8 2 6
+task_font = sans 10
+task_font_color = #111827 100
+task_background_id = 3
+task_active_background_id = 2
+task_iconified_font_color = #6B7280 100
+task_iconified_background_id = 3
+task_tooltip = 1
+mouse_left = toggle_iconify
+mouse_middle = none
+mouse_right = none
+mouse_scroll_up = none
+mouse_scroll_down = none
+urgent_nb_of_blink = 0

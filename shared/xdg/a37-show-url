@@ -1,0 +1,9 @@
+#!/bin/sh
+# Registered as the system's web browser (see mimeapps.list) so a CLI that wants to show
+# the user a page prints the link instead of launching Chromium. On a server nobody is
+# watching the screen, so an auto-opened login window is never closed: measured at 1.4
+# cores on one instance for 16h over a `cloudflared tunnel login` nobody completed.
+# The agent's own browser tool and the desktop Browser icon launch Chromium directly and
+# are unaffected. stderr, not stdout: callers capture stdout.
+printf '\nOpen this link in your own browser:\n  %s\n\n' "$1" >&2
+exit 0

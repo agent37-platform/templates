@@ -1,0 +1,18 @@
+{
+  "id": "agent37-brave",
+  "name": "Agent37 Brave Search",
+  "description": "Managed Brave web search for OpenClaw instances.",
+  "activation": {
+    "onStartup": false
+  },
+  "contracts": {
+    "tools": [
+      "brave_web_search"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

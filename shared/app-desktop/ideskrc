@@ -1,0 +1,40 @@
+table Config
+  FontName: sans
+  FontSize: 10
+  FontColor: #111827
+  Bold: true
+  ToolTip.FontSize: 11
+  ToolTip.FontName: sans
+  ToolTip.ForeColor: #FFFFFF
+  ToolTip.BackColor: #333333
+  ToolTip.CaptionOnHover: true
+  ToolTip.CaptionPlacement: Right
+  Locked: true
+  Transparency: 0
+  Shadow: false
+  ShadowColor: #FFFFFF
+  ShadowX: 1
+  ShadowY: 1
+  ClickDelay: 300
+  IconSnap: true
+  SnapWidth: 55
+  SnapHeight: 55
+  SnapShadow: false
+  SnapShadowTrans: 200
+  CaptionOnHover: false
+  CaptionPlacement: Bottom
+  FillStyle: fillinvert
+  Background.Delay: 0
+  Background.Source: None
+  Background.File: None
+  Background.Mode: Center
+  Background.Color: #F6F1E8
+end
+
+table Actions
+  Lock: control right doubleClk
+  Reload: middle doubleClk
+  Drag: left hold
+  EndDrag: left singleClk
+  Execute[0]: left doubleClk
+end

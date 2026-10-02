@@ -1,0 +1,5 @@
+name: agent37-brave
+version: "0.1.0"
+description: Agent37-managed Brave web search for Hermes
+provides_tools:
+  - brave_web_search

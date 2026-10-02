@@ -1,0 +1,10 @@
+table Icon
+  Caption: Browser
+  ToolTip.Caption: Open Chromium Browser
+  Icon: /usr/share/icons/hicolor/64x64/apps/chromium.png
+  Width: 64
+  Height: 64
+  X: 40
+  Y: 40
+  Command[0]: /usr/bin/chromium --no-sandbox --disable-dev-shm-usage
+end

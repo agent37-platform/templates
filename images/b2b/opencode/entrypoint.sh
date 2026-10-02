@@ -1,0 +1,358 @@
+#!/bin/bash
+# Absolute, not /usr/bin/env bash: the image ENV PATH is customer-first (see set_runtime_path
+# below), so `env bash` would resolve the supervisor's own interpreter out of a persisted
+# customer directory before any of this file runs.
+set -euo pipefail
+
+log() {
+  printf '%s [agent37-opencode] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*" >&2
+}
+
+# The control plane routes the bare instance URL to the template's default port (3737) and
+# passes it as AGENT37_GATEWAY_PORT; the agent37-gateway must bind exactly that.
+GATEWAY_PORT="${AGENT37_GATEWAY_PORT:-3737}"
+TERMINAL_PORT="${AGENT37_TERMINAL_PORT:-7681}"
+FILEBROWSER_PORT="${AGENT37_FILEBROWSER_PORT:-8080}"
+FILEBROWSER_ROOT="${AGENT37_FILEBROWSER_ROOT:-${HOME}}"
+FILEBROWSER_DB_PATH="${AGENT37_FILEBROWSER_DB_PATH:-${HOME}/.agent37/filebrowser.db}"
+BOOTSTRAP_BREW="${AGENT37_BOOTSTRAP_BREW:-true}"
+
+# Managed credentials arrive as AGENT37_MANAGED_TOKEN / AGENT37_LLM_PROXY_URL (the documented
+# names; the STARTER names are deprecated aliases still injected for older platform releases,
+# see docs/partial-starter-proxy-migration.md). They configure OpenCode's managed `agent37`
+# model (the default, out of the box) and the Composio MCP server. A customer's own provider
+# key (OPENAI_API_KEY and friends) is read by OpenCode natively from the container env — the
+# gateway inherits it and passes it to `opencode serve`; nothing is materialized here.
+STARTER_TOKEN="${AGENT37_MANAGED_TOKEN:-${AGENT37_STARTER_TOKEN:-}}"
+LLM_PROXY_URL="${AGENT37_LLM_PROXY_URL:-${AGENT37_STARTER_PROXY_URL:-}}"
+MANAGED_MODEL_ID="${AGENT37_STARTER_MODEL_ID:-default}"
+COMPOSIO_MCP_URL="${AGENT37_COMPOSIO_MCP_URL:-}"
+COMPOSIO_ENABLED="${AGENT37_HERMES_COMPOSIO_ENABLED:-true}"
+OPENCODE_BIN="${OPENCODE_BIN:-/usr/local/bin/opencode}"
+
+OPENCODE_CONFIG_UPDATER_SCRIPT="${OPENCODE_CONFIG_UPDATER_SCRIPT:-/usr/local/lib/agent37/configure-opencode-config.sh}"
+
+GATEWAY_DIR="/usr/local/lib/agent37-gateway"
+GATEWAY_HOME="${AGENT37_GATEWAY_HOME:-${HOME}/.agent37-gateway}"
+GATEWAY_WORKSPACE_DIR="${GATEWAY_WORKSPACE_DIR:-${HOME}}"
+GATEWAY_DEFAULT_AGENT="${GATEWAY_DEFAULT_AGENT:-opencode}"
+
+PYTHON_VENV_PATH="${AGENT37_PYTHON_VENV:-${HOME}/.venv}"
+PYTHON_USER_BASE="${PYTHONUSERBASE:-${HOME}/.local}"
+PYTHON_USER_BIN="${PYTHON_USER_BASE}/bin"
+AGENT37_HOOKS_DIR="${AGENT37_HOOKS_DIR:-${HOME}/.agent37/hooks}"
+AGENT37_POST_IMAGE_UPDATE_HOOK="${AGENT37_HOOKS_DIR}/post-image-update.sh"
+AGENT37_POST_RESTART_HOOK="${AGENT37_HOOKS_DIR}/post-restart.sh"
+AGENT37_LAST_IMAGE_REF_PATH="${AGENT37_HOOKS_DIR}/.last-image-ref"
+AGENT37_RUNTIME_IMAGE_REF="${AGENT37_RUNTIME_IMAGE_REF:-}"
+MAX_RETRIES=3
+RETRY_DELAY=3
+
+gateway_pid=""
+ttyd_pid=""
+filebrowser_pid=""
+RUNTIME_ENV_ASSIGNMENTS=()
+
+is_truthy() {
+  local value
+  value="$(printf '%s' "${1:-}" | /usr/bin/tr '[:upper:]' '[:lower:]')"
+  case "${value}" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_set() {
+  [ -n "${1:-}" ] && printf 'yes' || printf 'no'
+}
+
+set_runtime_path() {
+  PATH="${PYTHON_VENV_PATH}/bin:${PYTHON_USER_BIN}:${NPM_CONFIG_PREFIX}/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  export PATH
+}
+
+# The pinned env every service gets. OPENCODE_BIN keeps the gateway (and any shell) on the baked
+# CLI: migrated homes can carry an ~/.opencode/bin install that shadows it via the customer-first
+# PATH above (which child shells still inherit, by design).
+build_runtime_env_assignments() {
+  RUNTIME_ENV_ASSIGNMENTS=(
+    "HOME=${HOME}"
+    "NPM_CONFIG_PREFIX=${NPM_CONFIG_PREFIX}"
+    "PYTHONUSERBASE=${PYTHON_USER_BASE}"
+    "OPENCODE_BIN=${OPENCODE_BIN}"
+    "PATH=${PATH}"
+  )
+}
+
+monitor_http_ready() {
+  local name="${1:-}"
+  local url="${2:-}"
+  local start="${SECONDS}"
+  local i=0
+
+  while true; do
+    i=$((i + 1))
+    if curl -sS -o /dev/null --max-time 1 "${url}" >/dev/null 2>&1; then
+      log "${name} ready: ${url} (after $((SECONDS - start))s)"
+      return 0
+    fi
+    if [ $((i % 30)) -eq 0 ]; then
+      log "${name} not ready yet: ${url} (elapsed $((SECONDS - start))s)"
+    fi
+    sleep 1
+  done
+}
+
+ensure_base_dirs() {
+  mkdir -p \
+    "${HOME}" \
+    "${NPM_CONFIG_PREFIX}" \
+    "${PYTHON_USER_BIN}" \
+    "${GATEWAY_HOME}" \
+    "$(dirname "${FILEBROWSER_DB_PATH}")"
+  sudo -n chown -R "$(id -u):$(id -g)" "${NPM_CONFIG_PREFIX}" >/dev/null 2>&1 || true
+}
+
+ensure_python_venv() {
+  if [ -x "${PYTHON_VENV_PATH}/bin/python" ] \
+      && ! "${PYTHON_VENV_PATH}/bin/python" -c 'import sys' >/dev/null 2>&1; then
+    log "Existing Python virtualenv appears unhealthy; recreating ${PYTHON_VENV_PATH}."
+    rm -rf "${PYTHON_VENV_PATH}"
+  fi
+
+  if [ ! -x "${PYTHON_VENV_PATH}/bin/python" ]; then
+    log "Creating persistent Python virtualenv at ${PYTHON_VENV_PATH}..."
+    /usr/bin/python3 -m venv "${PYTHON_VENV_PATH}"
+  fi
+}
+
+run_with_optional_timeout() {
+  local timeout_seconds="${1:-0}"
+  local status=0
+  shift
+
+  set +e
+  if [ "${timeout_seconds}" -gt 0 ] && command -v timeout >/dev/null 2>&1; then
+    timeout --signal=TERM "${timeout_seconds}" "$@"
+    status=$?
+  else
+    "$@"
+    status=$?
+  fi
+  set -e
+
+  return "${status}"
+}
+
+ensure_hooks() {
+  mkdir -p "${AGENT37_HOOKS_DIR}"
+  if [ ! -f "${AGENT37_POST_IMAGE_UPDATE_HOOK}" ]; then
+    cat > "${AGENT37_POST_IMAGE_UPDATE_HOOK}" <<'EOF'
+#!/usr/bin/env bash
+# Runs when the runtime image changes (for example after an instance update).
+# Use this to reinstall tools that are not persisted in /home/node or /home/linuxbrew.
+EOF
+  fi
+  if [ ! -f "${AGENT37_POST_RESTART_HOOK}" ]; then
+    cat > "${AGENT37_POST_RESTART_HOOK}" <<'EOF'
+#!/usr/bin/env bash
+# Runs every time the container starts (restart, reboot, update, etc.).
+# Use this to restore runtime state that doesn't survive container restarts.
+EOF
+  fi
+  chmod 0755 "${AGENT37_POST_IMAGE_UPDATE_HOOK}" "${AGENT37_POST_RESTART_HOOK}" >/dev/null 2>&1 || true
+}
+
+run_post_update_hook_if_needed() {
+  [ -n "${AGENT37_RUNTIME_IMAGE_REF}" ] || return 0
+
+  local previous_ref=""
+  if [ -f "${AGENT37_LAST_IMAGE_REF_PATH}" ]; then
+    previous_ref="$(cat "${AGENT37_LAST_IMAGE_REF_PATH}" 2>/dev/null || true)"
+  fi
+  [ "${previous_ref}" = "${AGENT37_RUNTIME_IMAGE_REF}" ] && return 0
+
+  log "Runtime image changed (${previous_ref:-<unset>} -> ${AGENT37_RUNTIME_IMAGE_REF}); running post-image-update hook."
+  if run_with_optional_timeout 900 bash "${AGENT37_POST_IMAGE_UPDATE_HOOK}"; then
+    printf '%s\n' "${AGENT37_RUNTIME_IMAGE_REF}" > "${AGENT37_LAST_IMAGE_REF_PATH}"
+  else
+    log "post-image-update hook failed; it will retry on next restart/update."
+  fi
+}
+
+run_post_restart_hook() {
+  if ! grep -qvE '^\s*(#|$)' "${AGENT37_POST_RESTART_HOOK}"; then
+    return 0
+  fi
+  log "Running post-restart hook (${AGENT37_POST_RESTART_HOOK})."
+  run_with_optional_timeout 300 bash "${AGENT37_POST_RESTART_HOOK}" \
+    || log "post-restart hook failed; continuing startup."
+}
+
+ensure_homebrew() {
+  is_truthy "${BOOTSTRAP_BREW}" || return 0
+  if command -v brew >/dev/null 2>&1 || [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+    return 0
+  fi
+  log "Homebrew not found; bootstrapping to /home/linuxbrew/.linuxbrew (one-time)..."
+  sudo -n mkdir -p /home/linuxbrew >/dev/null 2>&1 || true
+  sudo -n chown -R "$(id -u):$(id -g)" /home/linuxbrew >/dev/null 2>&1 || true
+  export NONINTERACTIVE=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_ENV_HINTS=1
+  /bin/bash -lc "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" </dev/null
+}
+
+# OpenCode's managed config (the `agent37` model, the Composio MCP server, the usage guidance)
+# is regenerated at every boot, since the managed token rotates on recreate. The clean base
+# image does not bake the script and leaves OpenCode's config to the customer.
+configure_opencode_config() {
+  if [ ! -f "${OPENCODE_CONFIG_UPDATER_SCRIPT}" ]; then
+    return 0
+  fi
+  STARTER_TOKEN="${STARTER_TOKEN}" LLM_PROXY_URL="${LLM_PROXY_URL}" \
+    MANAGED_MODEL_ID="${MANAGED_MODEL_ID}" COMPOSIO_MCP_URL="${COMPOSIO_MCP_URL}" \
+    HERMES_COMPOSIO_ENABLED="${COMPOSIO_ENABLED}" OPENCODE_BIN="${OPENCODE_BIN}" \
+    /bin/bash "${OPENCODE_CONFIG_UPDATER_SCRIPT}" \
+    || log "Warning: OpenCode config update failed; continuing startup."
+}
+
+start_ttyd() {
+  log "Starting ttyd terminal (port=${TERMINAL_PORT})..."
+  /usr/local/bin/ttyd -p "${TERMINAL_PORT}" -W -t rendererType=dom \
+    /usr/bin/env "${RUNTIME_ENV_ASSIGNMENTS[@]}" bash &
+  ttyd_pid=$!
+}
+
+# FileBrowser runs --noauth behind the edge (the signed URL / Bearer is the only gate). v2.61.0 still
+# needs a persisted default user so the SPA can mint its internal JWT under noauth.
+ensure_filebrowser_db_and_user_policy() {
+  local db_dir
+  db_dir="$(dirname "${FILEBROWSER_DB_PATH}")"
+  mkdir -p "${FILEBROWSER_ROOT}" "${db_dir}"
+
+  if [ ! -f "${FILEBROWSER_DB_PATH}" ]; then
+    log "Initializing File Browser database at ${FILEBROWSER_DB_PATH}..."
+    /usr/local/bin/filebrowser config init --database "${FILEBROWSER_DB_PATH}" --root "${FILEBROWSER_ROOT}" --auth.method noauth >/dev/null \
+      || log "Warning: failed to initialize File Browser database; continuing startup."
+  fi
+
+  /usr/local/bin/filebrowser config set --database "${FILEBROWSER_DB_PATH}" --auth.method noauth >/dev/null \
+    || log "Warning: failed to enforce File Browser noauth mode; continuing."
+
+  if ! /usr/local/bin/filebrowser users update 1 --database "${FILEBROWSER_DB_PATH}" --lockPassword --scope / \
+      --perm.admin=false --perm.download=true --perm.create=true --perm.delete=true \
+      --perm.rename=true --perm.modify=true --perm.share=true --perm.execute=true >/dev/null 2>&1; then
+    log "File Browser default user missing; creating noauth bootstrap user..."
+    /usr/local/bin/filebrowser users add agent37 agent37-noauth-placeholder --database "${FILEBROWSER_DB_PATH}" \
+      --lockPassword --scope / --perm.admin=false --perm.download=true --perm.create=true \
+      --perm.delete=true --perm.rename=true --perm.modify=true --perm.share=true --perm.execute=true >/dev/null 2>&1 \
+      || log "Warning: failed to create File Browser bootstrap user; continuing."
+  fi
+}
+
+start_filebrowser() {
+  log "Starting File Browser (port=${FILEBROWSER_PORT} root=${FILEBROWSER_ROOT})..."
+  ensure_filebrowser_db_and_user_policy
+  /usr/local/bin/filebrowser --address 0.0.0.0 --port "${FILEBROWSER_PORT}" --root "${FILEBROWSER_ROOT}" \
+    --database "${FILEBROWSER_DB_PATH}" --log stdout --noauth &
+  filebrowser_pid=$!
+}
+
+start_agent37_gateway() {
+  log "Starting agent37 gateway (port=${GATEWAY_PORT} default_agent=${GATEWAY_DEFAULT_AGENT})..."
+  /usr/bin/env \
+    "${RUNTIME_ENV_ASSIGNMENTS[@]}" \
+    "PORT=${GATEWAY_PORT}" \
+    "HOST=0.0.0.0" \
+    "NODE_ENV=production" \
+    "AGENT37_GATEWAY_HOME=${GATEWAY_HOME}" \
+    "GATEWAY_WORKSPACE_DIR=${GATEWAY_WORKSPACE_DIR}" \
+    "GATEWAY_DEFAULT_AGENT=${GATEWAY_DEFAULT_AGENT}" \
+    /usr/local/bin/node "${GATEWAY_DIR}/dist/server/server/index.js" &
+  gateway_pid=$!
+}
+
+kill_and_wait() {
+  local pid="${1:-}"
+  [ -n "${pid}" ] || return 0
+  kill "${pid}" 2>/dev/null || true
+  wait "${pid}" 2>/dev/null || true
+}
+
+cleanup() {
+  kill_and_wait "${gateway_pid}"
+  kill_and_wait "${ttyd_pid}"
+  kill_and_wait "${filebrowser_pid}"
+}
+
+# supervise <pid_var> <retries_var> <name> <restart_fn> <is_anchor> <down_message>
+# Restart a crashed service up to MAX_RETRIES, then give up. A non-anchor service nulls its
+# pid and stays down; the anchor (agent37 gateway) exits the container so Docker's restart
+# policy takes over. <name> labels the restart log line; <down_message> is logged verbatim
+# when retries are exhausted.
+supervise() {
+  local -n _pid="$1"
+  local -n _retries="$2"
+  local name="$3" restart_fn="$4" is_anchor="$5" down_message="$6"
+
+  [ -n "${_pid}" ] || return 0
+  if kill -0 "${_pid}" 2>/dev/null; then
+    _retries=0
+    return 0
+  fi
+
+  _retries=$((_retries + 1))
+  if [ "${_retries}" -gt "${MAX_RETRIES}" ]; then
+    log "${down_message}"
+    if is_truthy "${is_anchor}"; then
+      cleanup
+      exit 1
+    fi
+    _pid=""
+    return 0
+  fi
+
+  log "${name} exited. Restarting in ${RETRY_DELAY}s (attempt ${_retries}/${MAX_RETRIES})..."
+  sleep "${RETRY_DELAY}"
+  "${restart_fn}"
+}
+
+log "Booting (uid=$(id -u) gateway_port=${GATEWAY_PORT} terminal_port=${TERMINAL_PORT} filebrowser_port=${FILEBROWSER_PORT} managed_token_set=$(is_set "${STARTER_TOKEN}") image_ref=${AGENT37_RUNTIME_IMAGE_REF:-<unset>})"
+
+ensure_base_dirs
+set_runtime_path
+build_runtime_env_assignments
+trap 'cleanup; exit 143' SIGTERM
+trap 'cleanup; exit 130' SIGINT
+ensure_python_venv || log "Warning: Python virtualenv init failed; continuing."
+configure_opencode_config
+ensure_hooks
+# Start the anchor (agent37-gateway, port 3737) first so the instance reports ready before
+# the customer's hooks (post-update up to 900 s, post-restart up to 300 s) and ttyd/File
+# Browser's synchronous bootstrap run: the host gives up probing the port after 120 s.
+start_agent37_gateway
+monitor_http_ready "agent37-gateway" "http://127.0.0.1:${GATEWAY_PORT}/v1/health" &
+run_post_update_hook_if_needed
+run_post_restart_hook
+
+start_ttyd
+start_filebrowser
+monitor_http_ready "filebrowser" "http://127.0.0.1:${FILEBROWSER_PORT}/" &
+
+if is_truthy "${BOOTSTRAP_BREW}"; then
+  ensure_homebrew &
+fi
+
+# The agent37 gateway is the anchor: if it cannot stay up the container exits and Docker's
+# restart policy takes over. ttyd and File Browser retry a few times then stay down.
+gateway_retries=0
+ttyd_retries=0
+filebrowser_retries=0
+while true; do
+  sleep 5
+  supervise gateway_pid gateway_retries "agent37 gateway" start_agent37_gateway true \
+    "agent37 gateway crashed ${MAX_RETRIES} times consecutively. Exiting so Docker restarts the container."
+  supervise ttyd_pid ttyd_retries "ttyd" start_ttyd false \
+    "ttyd crashed ${MAX_RETRIES} times consecutively. Leaving it down."
+  supervise filebrowser_pid filebrowser_retries "File Browser" start_filebrowser false \
+    "File Browser crashed ${MAX_RETRIES} times consecutively. Leaving it down."
+done

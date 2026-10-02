@@ -1,0 +1,15 @@
+# Managed Agent37 base settings for Codex, applied into ~/.codex/config.toml at boot by
+# configure-codex-config.sh, which owns exactly the root keys set here (regenerated every
+# boot; a customer's other keys and tables are carried over). CODEX_HOME is ~/.codex on the
+# persisted volume, so there is no read-only system path to bake into; this file is the seed.
+#
+# The gateway drives every /v1 turn through `codex app-server` and sets the sandbox and
+# approval policy per turn, so it does not depend on these. They exist so the SAME headless
+# behaviour holds when a customer opens the terminal and runs `codex` / `codex exec`: the
+# container is the sandbox (decision 6), so a turn must never block on an approval prompt.
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+
+# Reach the managed Composio server (a streamable-HTTP MCP server added below at boot with a
+# url + http_headers) through Codex's rmcp client. Harmless when no HTTP MCP server is set.
+experimental_use_rmcp_client = true

@@ -1,0 +1,27 @@
+
+/* Agent37 consumer desktop: blend the noVNC stage into the desktop background so any
+   letterbox moment reads as canvas, not dark bars, and slim the toolbar down to
+   clipboard + fullscreen. */
+body,
+#noVNC_container {
+  background: #F6F1E8 !important;
+}
+#noVNC_transition {
+  background: #F6F1E8;
+  color: #111827;
+}
+#noVNC_toggle_extra_keys_button,
+#noVNC_modifiers,
+#noVNC_toggle_ctrl_button,
+#noVNC_toggle_alt_button,
+#noVNC_toggle_windows_button,
+#noVNC_send_tab_button,
+#noVNC_send_esc_button,
+#noVNC_send_ctrl_alt_del_button,
+#noVNC_power_button,
+#noVNC_disconnect_button,
+#noVNC_settings_button,
+#noVNC_view_drag_button,
+#noVNC_keyboard_button {
+  display: none !important;
+}

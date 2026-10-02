@@ -1,0 +1,16 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runner's python3 ships PyYAML, which the test imports.
+      - name: Hermes config updater tests
+        run: python3 shared/test_configure_hermes_config.py
