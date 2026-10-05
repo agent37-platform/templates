@@ -69,7 +69,7 @@ RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund "@openai/co
 # ~/.agent37-gateway on the volume at runtime. --omit=optional skips the Claude Agent SDK's
 # platform packages (unused by the codex adapter, which spawns `codex app-server` via
 # CODEX_BIN over stdio). The tag must be >= v0.11.0 (the codex adapter).
-ARG GATEWAY_VERSION=v0.14.0
+ARG GATEWAY_VERSION=v0.18.0
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \

@@ -80,7 +80,7 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
 # ~/.agent37-gateway on the volume at runtime. --omit=optional skips the Claude Agent SDK's
 # platform packages (unused by the opencode adapter, which drives a resident `opencode serve`
 # over HTTP via OPENCODE_BIN). The tag must be >= v0.12.0 (the opencode adapter).
-ARG GATEWAY_VERSION=v0.14.0
+ARG GATEWAY_VERSION=v0.18.0
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \

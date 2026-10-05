@@ -74,7 +74,7 @@ COPY --chmod=0644 shared/claude-managed-settings.json /etc/claude-code/managed-s
 # platform packages (a second bundled Claude Code binary); the adapter spawns the baked CLI
 # above via CLAUDE_CODE_BIN, the same pairing the consumer app image runs in production.
 # The tag must be >= v0.9.0 (the claude-code adapter).
-ARG GATEWAY_VERSION=v0.14.0
+ARG GATEWAY_VERSION=v0.18.0
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \

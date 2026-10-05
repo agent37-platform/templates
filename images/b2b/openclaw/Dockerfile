@@ -102,7 +102,7 @@ RUN set -eu; dist="$(npm root -g)/openclaw/dist"; \
 # through the adapter, so the tag must be >= v0.1.3 (OpenClaw adapter + GATEWAY_DEFAULT_AGENT). It
 # lives outside /home/node so the persisted volume cannot mask it; its state goes to
 # ~/.agent37-gateway on the volume at runtime.
-ARG GATEWAY_VERSION=v0.14.0
+ARG GATEWAY_VERSION=v0.18.0
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund \
