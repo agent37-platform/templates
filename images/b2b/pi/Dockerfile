@@ -74,7 +74,7 @@ RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund --ignore-sc
 # ~/.agent37-gateway on the volume at runtime. --omit=optional skips the Claude Agent SDK's
 # platform packages (unused by the pi adapter, which spawns one `pi --mode json` process per
 # turn via PI_BIN). The tag must be >= v0.16.0 (the pi adapter).
-ARG GATEWAY_VERSION=v0.16.0
+ARG GATEWAY_VERSION=v0.18.0
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \

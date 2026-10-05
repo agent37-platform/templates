@@ -74,7 +74,7 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
 # platform packages (unused by the grok adapter, which spawns one headless grok
 # process per turn via GROK_BIN). The tag must be >= v0.16.1, where the adapter hands grok
 # its prompt on a file: as an argv value the kernel caps a prompt at 128 KiB.
-ARG GATEWAY_VERSION=v0.16.1
+ARG GATEWAY_VERSION=v0.18.0
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \

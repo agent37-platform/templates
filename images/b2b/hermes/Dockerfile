@@ -91,7 +91,7 @@ RUN cd /usr/local/lib/hermes/hermes-agent/web \
 # skips the Claude Agent SDK's platform packages (a bundled Claude Code binary this
 # image does not ship: the claude-code harness lives only in the consumer app image,
 # which bakes the CLI on top of this one; here it reports agent_unavailable).
-ARG GATEWAY_VERSION=v0.17.0
+ARG GATEWAY_VERSION=v0.18.0
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \
