@@ -45,45 +45,49 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
   && uv --version
 
 # Keep Hermes outside /home/node because that path is mounted as a persisted volume.
-# Pin the agent checkout as well as the installer script so builds do not float with main. Hermes Version
-# Stamped image-managed (`.install_method`) so `hermes update` refuses in place: updates ship as a new image.
-# The venv runs on a uv-managed Python (python-build-standalone bundles SQLite 3.53), never Debian's
-# python3: bookworm's libsqlite3 is 3.40.1, which carries the WAL-reset corruption bug, so Hermes refuses
-# WAL on every new database and `hermes doctor` flags the runtime. This is the same runtime repair
-# `hermes update` performs on non-Docker installs; the install dir sits outside /home/node so the
-# persisted volume cannot mask the interpreter. The version check fails the build if the installer ever
-# falls back to the system interpreter.
-ARG HERMES_VERSION=v2026.9.24
+# Pin the agent checkout as well as the installer script so builds do not float with main.
+# Since v0.21.6 the installer hands the venv, its uv-managed Python (python-build-standalone,
+# SQLite 3.53, clear of bookworm's WAL-reset bug) and the tools it manages to Hermes's own package
+# manager, which keeps them under the data root, $HERMES_HOME. Installing with HERMES_HOME set to
+# the directory the checkout sits in (which Hermes treats as the checkout's owner) keeps all of it
+# off the volume; the runtime HERMES_HOME stays ~/.hermes, and HERMES_RUNTIME_DIR below points the
+# runtime at the baked tools. The venv is linked at the stable checkout/venv path every caller
+# uses. Dropped after install: the installer's ~/.local/bin launchers (they only run under the
+# install data root) and the home it seeds into the data root (config, bundled skills, caches),
+# since /usr/local/lib/hermes/skills is the baked external skills dir. Stamped image-managed
+# (`.install_method`, next to both the checkout and the code the venv runs) so `hermes update`
+# refuses in place: updates ship as a new image. The code the venv runs also gets the checkout's
+# install stamp marked `external`, as upstream's own image does, so it reports its real version.
+# The version check fails the build if the venv ever lands on the system interpreter.
+ARG HERMES_VERSION=v0.21.6
 ARG UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python
 RUN install -d -o node -g node /usr/local/lib/hermes /home/node/.hermes /home/node/.local/bin "${UV_PYTHON_INSTALL_DIR}" \
   && touch /home/node/.bashrc \
   && chown node:node /home/node/.bashrc \
   && echo "Installing Hermes Agent ${HERMES_VERSION}" \
-  && sudo -u node -H env HOME=/home/node SHELL=/bin/bash \
-    UV_PYTHON_PREFERENCE=only-managed UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR}" \
-    bash -lc "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/${HERMES_VERSION}/scripts/install.sh | bash -s -- --skip-setup --branch ${HERMES_VERSION} --dir /usr/local/lib/hermes/hermes-agent" \
+  && sudo -u node -H env HOME=/home/node SHELL=/bin/bash HERMES_HOME=/usr/local/lib/hermes \
+    UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR}" bash -lc "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/${HERMES_VERSION}/scripts/install.sh | bash -s -- --skip-setup --skip-computer-use --branch ${HERMES_VERSION} --dir /usr/local/lib/hermes/hermes-agent" \
+  && venv="$(ls -d /usr/local/lib/hermes/installs/*/environments/*/venv)" \
+  && [ "$(printf '%s\n' ${venv} | wc -l)" -eq 1 ] \
+  && sudo -u node ln -sfn "${venv}" /usr/local/lib/hermes/hermes-agent/venv \
   && ln -sf /usr/local/lib/hermes/hermes-agent/venv/bin/hermes /usr/local/bin/hermes \
-  && echo docker > /usr/local/lib/hermes/hermes-agent/.install_method \
-  && sudo -u node -H env HOME=/home/node /usr/local/bin/hermes --help >/dev/null 2>&1 \
+  && echo docker | tee /usr/local/lib/hermes/hermes-agent/.install_method "$(dirname "${venv}")/workspace/.install_method" \
+  && python3 -c 'import json, sys; s = json.load(open(sys.argv[1])); s["updateMechanism"] = "external"; open(sys.argv[2], "w").write(json.dumps(s) + "\n")' \
+    /usr/local/lib/hermes/hermes-agent/install-stamp.json "$(dirname "${venv}")/workspace/install-stamp.json" \
+  && test -f /usr/local/lib/hermes/hermes-agent/hermes_cli/web_dist/index.html \
+  && rm -f /home/node/.local/bin/hermes /home/node/.local/bin/hermes-acp /home/node/.local/bin/hermes-agent \
+  && find /usr/local/lib/hermes -mindepth 1 -maxdepth 1 ! -name installs ! -name tools ! -name hermes-agent -exec rm -rf {} + \
+  && sudo -u node -H env HOME=/home/node HERMES_RUNTIME_DIR=/usr/local/lib/hermes/tools /usr/local/bin/hermes --help >/dev/null 2>&1 \
   && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import sqlite3, sys; sys.exit(f'venv SQLite {sqlite3.sqlite_version} has the WAL-reset bug (want 3.51.3+)') if sqlite3.sqlite_version_info < (3, 51, 3) else print('venv SQLite', sqlite3.sqlite_version, 'via', sys.base_prefix)" \
   && rm -rf /home/node/.cache /home/node/.npm /tmp/*
+ENV HERMES_RUNTIME_DIR=/usr/local/lib/hermes/tools
+ENV HERMES_WEB_DIST=/usr/local/lib/hermes/hermes-agent/hermes_cli/web_dist
 
-# Pre-bake the Telegram platform dep (match this HERMES_VERSION's tools/lazy_deps.py pin):
-# Hermes lazy-installs it on first Telegram boot and the install races the adapter import,
-# permanently wedging Telegram on any fresh-rootfs boot with it configured (hermes-agent
-# issue #85272, "Any cannot be instantiated"). Remove once that issue is fixed upstream.
-RUN uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python "python-telegram-bot[webhooks]==22.8" \
-  && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import telegram, telegram.ext"
-
-# Pre-build the Hermes dashboard web UI at image-build time so the runtime never runs `npm ci`
-# (the default `hermes dashboard` build step). On the 1 vCPU / 2 GB lean tier that runtime build
-# OOM-kills the container; baking the dist and launching with --skip-build avoids it and speeds
-# boot on every tier. `npm run build` (tsc -b && vite build) emits to ../hermes_cli/web_dist per
-# web/vite.config.ts, which --skip-build serves; node_modules is dropped after (not needed to serve).
-RUN cd /usr/local/lib/hermes/hermes-agent/web \
-  && sudo -u node -H env HOME=/home/node PATH=/usr/local/bin:/usr/bin:/bin sh -c 'npm ci --no-audit --no-fund && npm run build' \
-  && test -d /usr/local/lib/hermes/hermes-agent/hermes_cli/web_dist \
-  && rm -rf node_modules /home/node/.cache /home/node/.npm
+# Pre-bake the Telegram platform dep (this HERMES_VERSION's `telegram` extra in pyproject.toml):
+# the lazy install builds a fresh venv under $HERMES_HOME that this image never runs. PyYAML too:
+# Hermes no longer depends on it, and configure-hermes-config.py runs on this venv.
+RUN uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python "python-telegram-bot[webhooks]==22.8" "pyyaml==6.0.3" \
+  && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import telegram, telegram.ext, yaml"
 
 # Bake the Agent37 gateway (the per-instance chat adapter) from its release tag.
 # It lives outside /home/node so the persisted volume cannot mask it; its state
@@ -91,7 +95,7 @@ RUN cd /usr/local/lib/hermes/hermes-agent/web \
 # skips the Claude Agent SDK's platform packages (a bundled Claude Code binary this
 # image does not ship: the claude-code harness lives only in the consumer app image,
 # which bakes the CLI on top of this one; here it reports agent_unavailable).
-ARG GATEWAY_VERSION=v0.18.0
+ARG GATEWAY_VERSION=v0.18.1
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \
