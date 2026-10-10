@@ -2,11 +2,11 @@
   "b2b-claude-code": "2026.10.10a",
   "b2b-codex": "2026.10.10a",
   "b2b-grok": "2026.10.10a",
-  "b2b-hermes": "2026.10.10a",
+  "b2b-hermes": "2026.10.10b",
   "b2b-n8n": "2026.10.10a",
   "b2b-openclaw": "2026.10.05a",
   "b2b-opencode": "2026.10.10a",
   "b2b-pi": "2026.10.10a",
-  "consumer-app": "2026.10.10a",
+  "consumer-app": "2026.10.10b",
   "consumer-openclaw": "2026.09.27b"
 }

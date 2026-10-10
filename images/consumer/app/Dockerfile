@@ -13,7 +13,7 @@
 #
 # Build context is docker/ so it shares shared/. Tag comes from docker/images.json; publish via
 # scripts/publish-image.sh consumer-app. Bump HERMES_BASE_TAG together with b2b-hermes.
-ARG HERMES_BASE_TAG=2026.10.10a
+ARG HERMES_BASE_TAG=2026.10.10b
 FROM ghcr.io/agent37-platform/hermes:${HERMES_BASE_TAG}
 
 USER root
