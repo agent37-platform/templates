@@ -56,8 +56,10 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # install data root) and the home it seeds into the data root (config, bundled skills, caches),
 # since /usr/local/lib/hermes/skills is the baked external skills dir. Stamped image-managed
 # (`.install_method`, next to both the checkout and the code the venv runs) so `hermes update`
-# refuses in place: updates ship as a new image. The code the venv runs also gets the checkout's
-# install stamp marked `external`, as upstream's own image does, so it reports its real version.
+# refuses in place: updates ship as a new image. Like upstream's own image, the checkout drops its
+# .git and both it and the code the venv runs carry the install stamp marked `external`: the gateway
+# worker imports Hermes from the checkout, and a git checkout stamped self-updating tries to rebuild
+# its venv at launch. The stamp also makes `hermes --version` report the real version.
 # The version check fails the build if the venv ever lands on the system interpreter.
 ARG HERMES_VERSION=v0.21.6
 ARG UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python
@@ -72,8 +74,9 @@ RUN install -d -o node -g node /usr/local/lib/hermes /home/node/.hermes /home/no
   && sudo -u node ln -sfn "${venv}" /usr/local/lib/hermes/hermes-agent/venv \
   && ln -sf /usr/local/lib/hermes/hermes-agent/venv/bin/hermes /usr/local/bin/hermes \
   && echo docker | tee /usr/local/lib/hermes/hermes-agent/.install_method "$(dirname "${venv}")/workspace/.install_method" \
-  && python3 -c 'import json, sys; s = json.load(open(sys.argv[1])); s["updateMechanism"] = "external"; open(sys.argv[2], "w").write(json.dumps(s) + "\n")' \
+  && python3 -c 'import json, sys; s = json.load(open(sys.argv[1])); s["updateMechanism"] = "external"; [open(p, "w").write(json.dumps(s) + "\n") for p in sys.argv[1:]]' \
     /usr/local/lib/hermes/hermes-agent/install-stamp.json "$(dirname "${venv}")/workspace/install-stamp.json" \
+  && rm -rf /usr/local/lib/hermes/hermes-agent/.git \
   && test -f /usr/local/lib/hermes/hermes-agent/hermes_cli/web_dist/index.html \
   && rm -f /home/node/.local/bin/hermes /home/node/.local/bin/hermes-acp /home/node/.local/bin/hermes-agent \
   && find /usr/local/lib/hermes -mindepth 1 -maxdepth 1 ! -name installs ! -name tools ! -name hermes-agent -exec rm -rf {} + \
