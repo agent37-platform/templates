@@ -54,7 +54,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # Bake Claude Code outside /home/node so the persisted volume cannot mask it. The gateway
 # spawns exactly this binary (CLAUDE_CODE_BIN below), never a copy a user installs into the
 # user-first PATH.
-ARG CLAUDE_CODE_VERSION=2.1.287
+ARG CLAUDE_CODE_VERSION=2.1.296
 RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
   && npm cache clean --force \
   && rm -rf /home/node/.cache /home/node/.npm \

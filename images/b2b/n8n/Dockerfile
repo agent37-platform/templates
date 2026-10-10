@@ -8,7 +8,7 @@
 #
 # Bump = a new n8n release: change N8N_VERSION, bump the tag in docker/images.json, publish via
 # scripts/publish-image.sh b2b-n8n.
-ARG N8N_VERSION=2.41.6
+ARG N8N_VERSION=2.42.6
 # docker.io rather than the docker.n8n.io alias n8n documents: same registry and digest, but only
 # the docker.io name carries the build machine's Docker Hub login (the alias pulls anonymously
 # and gets rate-limited).

@@ -57,7 +57,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # Bake Codex outside /home/node so the persisted volume cannot mask it. The gateway spawns
 # exactly this binary (CODEX_BIN below), never a copy a user installs into the user-first
 # PATH. npm is OpenAI's documented install path for Codex.
-ARG CODEX_VERSION=0.160.0
+ARG CODEX_VERSION=0.162.1
 RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund "@openai/codex@${CODEX_VERSION}" \
   && npm cache clean --force \
   && rm -rf /home/node/.cache /home/node/.npm \

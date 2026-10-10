@@ -55,7 +55,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # spawns exactly this binary (GROK_BIN below), never a copy a user installs into the
 # user-first PATH. xAI ships prebuilt binaries from its CDN (the GitHub repo has no
 # releases); the .gz asset gunzips to the self-contained Rust binary.
-ARG GROK_VERSION=1.0.46
+ARG GROK_VERSION=1.0.50
 ARG TARGETARCH
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && case "${arch}" in \
