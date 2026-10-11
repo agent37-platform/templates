@@ -36,8 +36,7 @@ RUN apt-get update \
   # pubkey auth; customer SSH lands as node. '*' = no password login, not locked.
   && usermod -p '*' node
 
-# Preinstall uv so instruction-only Python skills that rely on `uv run`
-# work immediately without waiting for optional Homebrew bootstrap.
+# Preinstall uv so instruction-only Python skills that rely on `uv run` work immediately.
 ARG UV_VERSION=0.12.22
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
     | env UV_UNMANAGED_INSTALL="/usr/local/bin" sh \
@@ -132,7 +131,6 @@ ENV HOME=/home/node
 ENV NPM_CONFIG_PREFIX=${HOME}/.npm-global
 ENV PYTHONUSERBASE=${HOME}/.local
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-ENV HOMEBREW_ALLOW_EUID=1
 ENV HERMES_AGENT_DIR=/usr/local/lib/hermes/hermes-agent
 ENV HERMES_PYTHON=/usr/local/lib/hermes/hermes-agent/venv/bin/python
 ENV GATEWAY_WORKSPACE_DIR=${HOME}
@@ -163,7 +161,7 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
 COPY --chmod=0755 images/b2b/hermes/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY --chmod=0644 shared/dashboard-relay.js /usr/local/lib/agent37/dashboard-relay.js
 
-ENV PATH=${HOME}/.venv/bin:${PYTHONUSERBASE}/bin:${NPM_CONFIG_PREFIX}/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV PATH=${HOME}/.venv/bin:${PYTHONUSERBASE}/bin:${NPM_CONFIG_PREFIX}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 WORKDIR ${HOME}
 
