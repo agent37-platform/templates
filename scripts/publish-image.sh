@@ -31,7 +31,7 @@ Images (key in images.json; Dockerfile under images/<dir>/):
   b2b-n8n       images/b2b/n8n/. Pushes n8n
   consumer-app  images/consumer/app/. Pushes app
   consumer-openclaw  images/consumer/openclaw/. Pushes app-openclaw
-  vm-ubuntu     images/vm/ubuntu/. Pushes vm-ubuntu. A `type: 'vm'` image: it
+  vm-ubuntu     images/vm/ubuntu/. Pushes ubuntu. A `type: 'vm'` image: it
                   needs a real kernel and will not boot as a gVisor sandbox
 
 Required env:
@@ -108,7 +108,7 @@ case "${IMAGE_KEY}" in
     ;;
   vm-ubuntu)
     IMAGE_DIR="vm/ubuntu"
-    PACKAGES=("vm-ubuntu:")
+    PACKAGES=("ubuntu:")
     ;;
   *)
     echo "Unknown image: ${IMAGE_KEY}" >&2
