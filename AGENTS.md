@@ -29,9 +29,19 @@ This repo is public. Never commit a secret, a customer name, or an internal URL.
 | `images/b2b/n8n/` | `agent37-n8n` | `b2b-n8n` | `n8n` |
 | `images/consumer/app/` | Personal Agents (Hermes + desktop + extra harnesses), `FROM hermes` | `consumer-app` | `app` (private) |
 | `images/consumer/openclaw/` | Personal Agents on OpenClaw, `FROM openclaw` | `consumer-openclaw` | `app-openclaw` (private) |
+| `images/vm/docker/` | `agent37-vm-docker`: Ubuntu with Docker, Compose and buildx, for `type: 'vm'` instances only | `vm-docker` | `vm-docker` |
 | `shared/` | Files `COPY`'d into several images | | |
 
-The `b2b` images are public on GHCR; the two consumer images stay private. A file in `shared/` reaches an image only when that image is republished: `grep -rn "shared/<file>" images/*/*/Dockerfile` lists who uses it.
+The `b2b` and `vm` images are public on GHCR; the two consumer images stay private.
+
+A `vm` image is an ordinary Docker image, but it boots as a **virtual machine** (Cloud
+Hypervisor) rather than a gVisor sandbox, which is what lets it run Docker, k3s or an Android
+emulator inside. Two rules follow and neither is optional: its `HOME` is where the instance's
+one durable disk is mounted, so anything that must survive an image bump goes under it, and a
+container runtime inside the guest must put its data there too (the writable root is an
+overlayfs, and an image-layer extract cannot create its whiteout device nodes on one). The
+platform supplies the kernel, its module tree and sshd read-only, so a `vm` image installs
+none of them. A file in `shared/` reaches an image only when that image is republished: `grep -rn "shared/<file>" images/*/*/Dockerfile` lists who uses it.
 
 Pinned versions inside the Dockerfiles: `ARG GATEWAY_VERSION` (the [gateway](https://github.com/agent37-platform/gateway) release each b2b image installs), the harness version ARGs, and in the consumer Dockerfiles `ARG HERMES_BASE_TAG` / `ARG OPENCLAW_BASE_TAG` (the b2b tag they build `FROM`).
 
