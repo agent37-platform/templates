@@ -189,6 +189,27 @@ run_post_restart_hook() {
     || log "post-restart hook failed; continuing startup."
 }
 
+# Homebrew's prefix is a symlink into the persisted home tree, not a mount of its own: brew
+# only publishes bottles for /home/linuxbrew/.linuxbrew (any other prefix builds from source),
+# while $HOME is the only tree the platform preserves across an image update. Runs on every
+# boot because the root layer holding the symlink is reset on update, and is a no-op on hosts
+# that still bind-mount a prefix there (a live mount cannot be replaced from in here).
+link_homebrew_prefix() {
+  if [ -L /home/linuxbrew ]; then
+    return 0
+  fi
+  if grep -q ' /home/linuxbrew ' /proc/self/mounts 2>/dev/null; then
+    return 0
+  fi
+  mkdir -p "${HOME}/.linuxbrew" || return 0
+  if [ -d /home/linuxbrew ] && ! sudo -n rmdir /home/linuxbrew >/dev/null 2>&1; then
+    log "/home/linuxbrew holds files and is not a mount; leaving it in place (brew installs there will not survive an update)."
+    return 0
+  fi
+  sudo -n ln -s "${HOME}/.linuxbrew" /home/linuxbrew >/dev/null 2>&1 \
+    || log "Could not link /home/linuxbrew to ${HOME}/.linuxbrew; brew installs will not survive an update."
+}
+
 ensure_homebrew() {
   is_truthy "${BOOTSTRAP_BREW}" || return 0
   if command -v brew >/dev/null 2>&1 || [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
@@ -319,6 +340,7 @@ supervise() {
 log "Booting (uid=$(id -u) gateway_port=${GATEWAY_PORT} terminal_port=${TERMINAL_PORT} filebrowser_port=${FILEBROWSER_PORT} managed_token_set=$(is_set "${STARTER_TOKEN}") image_ref=${AGENT37_RUNTIME_IMAGE_REF:-<unset>})"
 
 ensure_base_dirs
+link_homebrew_prefix
 set_runtime_path
 build_runtime_env_assignments
 trap 'cleanup; exit 143' SIGTERM
