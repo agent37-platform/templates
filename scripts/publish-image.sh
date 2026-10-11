@@ -31,6 +31,8 @@ Images (key in images.json; Dockerfile under images/<dir>/):
   b2b-n8n       images/b2b/n8n/. Pushes n8n
   consumer-app  images/consumer/app/. Pushes app
   consumer-openclaw  images/consumer/openclaw/. Pushes app-openclaw
+  vm-docker     images/vm/docker/. Pushes vm-docker. A `type: 'vm'` image: it
+                  needs a real kernel and will not boot as a gVisor sandbox
 
 Required env:
   GH_USER    GitHub user/org namespace for ghcr.io
@@ -103,6 +105,10 @@ case "${IMAGE_KEY}" in
   consumer-openclaw)
     IMAGE_DIR="consumer/openclaw"
     PACKAGES=("app-openclaw:")
+    ;;
+  vm-docker)
+    IMAGE_DIR="vm/docker"
+    PACKAGES=("vm-docker:")
     ;;
   *)
     echo "Unknown image: ${IMAGE_KEY}" >&2
