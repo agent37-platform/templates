@@ -44,7 +44,7 @@ const CONSUMER_HOSTING_CONTEXT = `
 
     Troubleshooting: if the URL returns 502, the server isn't running or is bound to a different port — check \`ss -ltnp\` and the log file.
 
-- No root access: \`sudo\` does not elevate here. Install tools with Homebrew (\`brew install ...\`), \`uv\`, or npm/pip user installs.`;
+- No root access: \`sudo\` does not elevate here. Install tools with \`uv\` or npm/pip user installs.`;
 
 // The starter token prefix is the product line: subscription (consumer) instances keep an
 // `ocst.` credential across every recreate, B2B gets `a37st.`. It replaced a CLI-presence check
@@ -92,7 +92,7 @@ const HOOK_CONTEXT = fs.existsSync('/usr/local/bin/agent37-host')
 const BASE_CONTEXT = `<agent37-environment>
 You are running inside Agent37, a managed hosting platform for OpenClaw instances.
 
-Persistent paths (survive container restarts and runtime image updates): /home/node (user home + ~/.openclaw state) and /home/linuxbrew (Homebrew). Anything written outside these paths is reset on image update.
+Persistent path (survives container restarts and runtime image updates): /home/node (user home + ~/.openclaw state). Anything written outside it is reset on image update.
 
 Agent37-specific capabilities:${hostingContext()}${HOOK_CONTEXT}${cronContext()}${platformContext()}`;
 

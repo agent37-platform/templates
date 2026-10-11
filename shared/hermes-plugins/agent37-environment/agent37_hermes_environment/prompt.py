@@ -15,7 +15,7 @@ _BASE_CONTEXT = """\
 <agent37-environment>
 You are running inside Agent37, a managed agent hosting platform.
 
-Persistent paths (survive container restarts and runtime image updates): /home/node (user home + agent state) and /home/linuxbrew (Homebrew). Anything written outside these paths is reset on image update.
+Persistent path (survives container restarts and runtime image updates): /home/node (user home + agent state). Anything written outside it is reset on image update.
 
 - Post-restart hook (~/.agent37/hooks/post-restart.sh): runs every container start. Use it for any state the user wants to persist across restarts, such as a background worker or re-exported env vars.\
 """
@@ -43,7 +43,7 @@ _CONSUMER_HOSTING_CONTEXT = """
 
     `agent37 unexpose 3000` removes the link. `agent37 list-exposed` lists every live link — use it whenever the user asks about their links or reports one broken (if this instance was migrated, old links are dead; check `~/.hermes/MIGRATION.md` if present, then hand back the live URLs or re-expose).
 
-- No root access: `sudo` does not elevate here. Install tools with Homebrew (`brew install ...`), `uv`, or npm/pip user installs.\
+- No root access: `sudo` does not elevate here. Install tools with `uv` or npm/pip user installs.\
 """
 
 _CONSUMER_PLATFORM_CONTEXT = """

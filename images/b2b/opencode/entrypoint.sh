@@ -15,7 +15,6 @@ TERMINAL_PORT="${AGENT37_TERMINAL_PORT:-7681}"
 FILEBROWSER_PORT="${AGENT37_FILEBROWSER_PORT:-8080}"
 FILEBROWSER_ROOT="${AGENT37_FILEBROWSER_ROOT:-${HOME}}"
 FILEBROWSER_DB_PATH="${AGENT37_FILEBROWSER_DB_PATH:-${HOME}/.agent37/filebrowser.db}"
-BOOTSTRAP_BREW="${AGENT37_BOOTSTRAP_BREW:-true}"
 
 # Managed credentials arrive as AGENT37_MANAGED_TOKEN / AGENT37_LLM_PROXY_URL (the documented
 # names; the STARTER names are deprecated aliases still injected for older platform releases,
@@ -67,7 +66,7 @@ is_set() {
 }
 
 set_runtime_path() {
-  PATH="${PYTHON_VENV_PATH}/bin:${PYTHON_USER_BIN}:${NPM_CONFIG_PREFIX}/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  PATH="${PYTHON_VENV_PATH}/bin:${PYTHON_USER_BIN}:${NPM_CONFIG_PREFIX}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   export PATH
 }
 
@@ -150,7 +149,7 @@ ensure_hooks() {
     cat > "${AGENT37_POST_IMAGE_UPDATE_HOOK}" <<'EOF'
 #!/usr/bin/env bash
 # Runs when the runtime image changes (for example after an instance update).
-# Use this to reinstall tools that are not persisted in /home/node or /home/linuxbrew.
+# Use this to reinstall tools that are not persisted in /home/node.
 EOF
   fi
   if [ ! -f "${AGENT37_POST_RESTART_HOOK}" ]; then
@@ -187,18 +186,6 @@ run_post_restart_hook() {
   log "Running post-restart hook (${AGENT37_POST_RESTART_HOOK})."
   run_with_optional_timeout 300 bash "${AGENT37_POST_RESTART_HOOK}" \
     || log "post-restart hook failed; continuing startup."
-}
-
-ensure_homebrew() {
-  is_truthy "${BOOTSTRAP_BREW}" || return 0
-  if command -v brew >/dev/null 2>&1 || [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
-    return 0
-  fi
-  log "Homebrew not found; bootstrapping to /home/linuxbrew/.linuxbrew (one-time)..."
-  sudo -n mkdir -p /home/linuxbrew >/dev/null 2>&1 || true
-  sudo -n chown -R "$(id -u):$(id -g)" /home/linuxbrew >/dev/null 2>&1 || true
-  export NONINTERACTIVE=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_ENV_HINTS=1
-  /bin/bash -lc "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" </dev/null
 }
 
 # OpenCode's managed config (the `agent37` model, the Composio MCP server, the usage guidance)
@@ -337,10 +324,6 @@ run_post_restart_hook
 start_ttyd
 start_filebrowser
 monitor_http_ready "filebrowser" "http://127.0.0.1:${FILEBROWSER_PORT}/" &
-
-if is_truthy "${BOOTSTRAP_BREW}"; then
-  ensure_homebrew &
-fi
 
 # The agent37 gateway is the anchor: if it cannot stay up the container exits and Docker's
 # restart policy takes over. ttyd and File Browser retry a few times then stay down.

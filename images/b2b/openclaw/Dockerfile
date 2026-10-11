@@ -44,8 +44,7 @@ RUN apt-get update \
   # pubkey auth; customer SSH lands as node. '*' = no password login, not locked.
   && usermod -p '*' node
 
-# Preinstall uv so instruction-only Python skills that rely on `uv run`
-# work immediately without waiting for optional Homebrew bootstrap.
+# Preinstall uv so instruction-only Python skills that rely on `uv run` work immediately.
 ARG UV_VERSION=0.12.17
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
     | env UV_UNMANAGED_INSTALL="/usr/local/bin" sh \
@@ -163,11 +162,10 @@ ENV NPM_CONFIG_PREFIX=${HOME}/.npm-global
 ENV OPENCLAW_PYTHON_VENV=${HOME}/.venv
 ENV PYTHONUSERBASE=${HOME}/.local
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-ENV HOMEBREW_ALLOW_EUID=1
 ENV AGENT_BROWSER_HEADED=0
 ENV GATEWAY_DEFAULT_AGENT=openclaw
 
-ENV PATH=${OPENCLAW_PYTHON_VENV}/bin:${PYTHONUSERBASE}/bin:${NPM_CONFIG_PREFIX}/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV PATH=${OPENCLAW_PYTHON_VENV}/bin:${PYTHONUSERBASE}/bin:${NPM_CONFIG_PREFIX}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 WORKDIR ${HOME}
 
