@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
-# Agents API v1 (B2B) Linux + Docker runtime, for `type: 'vm'` instances only: it needs a
-# real kernel, so it cannot run as a gVisor sandbox. Backs the public agent37-vm-docker
-# system template. Docker, Compose and buildx are installed and dockerd IS the entrypoint,
+# Agents API v1 (B2B) Ubuntu runtime, for `type: 'vm'` instances only: it needs a real
+# kernel, so it cannot run as a gVisor sandbox. Backs the public agent37-ubuntu system
+# template. Docker, Compose and buildx are installed and dockerd IS the entrypoint,
 # so the customer SSHes in (or execs) and runs their own containers, compose stacks, k3s or
 # emulator on a machine that behaves like any other Ubuntu box.
 #
 # Bump = a new Ubuntu base or package set: bump the tag in images.json, publish via
-# scripts/publish-image.sh vm-docker.
+# scripts/publish-image.sh vm-ubuntu.
 FROM ubuntu:26.04
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -22,6 +22,6 @@ RUN apt-get update \
 # this image's declaration of what survives an image bump.
 ENV HOME=/root
 WORKDIR /root
-COPY --chmod=0755 images/vm/docker/entrypoint.sh /usr/local/bin/agent37-entrypoint.sh
+COPY --chmod=0755 images/vm/ubuntu/entrypoint.sh /usr/local/bin/agent37-entrypoint.sh
 
 ENTRYPOINT ["tini", "--", "/usr/local/bin/agent37-entrypoint.sh"]
