@@ -30,6 +30,7 @@ This repo is public. Never commit a secret, a customer name, or an internal URL.
 | `images/consumer/app/` | Personal Agents (Hermes + desktop + extra harnesses), `FROM hermes` | `consumer-app` | `app` (private) |
 | `images/consumer/openclaw/` | Personal Agents on OpenClaw, `FROM openclaw` | `consumer-openclaw` | `app-openclaw` (private) |
 | `images/vm/ubuntu/` | `agent37-ubuntu`: Ubuntu with Docker, Compose and buildx, for `type: 'vm'` instances only | `vm-ubuntu` | `ubuntu` |
+| `images/vm/android/` | `agent37-android`: the Android emulator, ADB and a noVNC screen, for `type: 'vm'` instances only | `vm-android` | `android` |
 | `shared/` | Files `COPY`'d into several images | | |
 
 The `b2b` and `vm` images are public on GHCR; the two consumer images stay private.

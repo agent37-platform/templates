@@ -1,0 +1,9 @@
+#!/bin/bash
+# A frame of the phone's screen as base64 WebP on stdout, small enough to come back through
+# the API's exec response. A full-resolution PNG screencap of a 1080x2400 phone is over the
+# 512 KB exec output limit, so this one is scaled and re-encoded; for the raw pixels use
+# `adb exec-out screencap -p` over SSH instead.
+set -euo pipefail
+
+WIDTH="${1:-540}"
+adb exec-out screencap -p | cwebp -quiet -resize "${WIDTH}" 0 -o - -- - | base64 -w0
