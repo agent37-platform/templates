@@ -33,6 +33,8 @@ Images (key in images.json; Dockerfile under images/<dir>/):
   consumer-openclaw  images/consumer/openclaw/. Pushes app-openclaw
   vm-ubuntu     images/vm/ubuntu/. Pushes ubuntu. A `type: 'vm'` image: it
                   needs a real kernel and will not boot as a gVisor sandbox
+  vm-android    images/vm/android/. Pushes android. Also `type: 'vm'` only:
+                  the Android emulator needs /dev/kvm
 
 Required env:
   GH_USER    GitHub user/org namespace for ghcr.io
@@ -109,6 +111,10 @@ case "${IMAGE_KEY}" in
   vm-ubuntu)
     IMAGE_DIR="vm/ubuntu"
     PACKAGES=("ubuntu:")
+    ;;
+  vm-android)
+    IMAGE_DIR="vm/android"
+    PACKAGES=("android:")
     ;;
   *)
     echo "Unknown image: ${IMAGE_KEY}" >&2

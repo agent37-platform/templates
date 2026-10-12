@@ -1,0 +1,21 @@
+#!/bin/bash
+# Blocks until the phone has finished booting, then prints how long it took. The emulator
+# answers adb well before Android is usable, so `adb wait-for-device` alone is not enough:
+# this waits for sys.boot_completed, which is the line the phone itself draws.
+set -uo pipefail
+
+TIMEOUT="${1:-300}"
+start=$SECONDS
+
+adb wait-for-device
+while [ "$((SECONDS - start))" -lt "${TIMEOUT}" ]; do
+  if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
+    echo "android: boot completed in $((SECONDS - start))s"
+    adb shell getprop ro.build.version.release
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "android: still not booted after ${TIMEOUT}s" >&2
+exit 1
