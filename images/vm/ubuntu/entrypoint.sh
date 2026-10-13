@@ -27,19 +27,33 @@ respawn() {
 # xfce4-panel asks, on a profile it has never seen, whether to use the default layout or an
 # empty one, and the dialog sits on top of the desktop until somebody clicks it. $HOME is the
 # durable disk, so this runs once per instance, not once per image.
+#
+# xfdesktop's own default puts a File System icon next to Home, which is a second way into the
+# same tree on a box whose work lives in $HOME. Home stays, that one goes.
 seed_xfce_profile() {
   local dir="${HOME}/.config/xfce4/xfconf/xfce-perchannel-xml"
   mkdir -p "${dir}"
   [ -f "${dir}/xfce4-panel.xml" ] || cp /etc/xdg/xfce4/panel/default.xml "${dir}/xfce4-panel.xml"
+  [ -f "${dir}/xfce4-desktop.xml" ] || cat > "${dir}/xfce4-desktop.xml" <<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfce4-desktop" version="1.0">
+  <property name="desktop-icons" type="empty">
+    <property name="file-icons" type="empty">
+      <property name="show-filesystem" type="bool" value="false"/>
+    </property>
+  </property>
+</channel>
+XML
 }
 
-# What the box can do, as three icons on an otherwise empty desktop. Seeded once (a deleted
-# icon stays deleted) and executable, which is what xfdesktop needs to launch one directly.
+# What the box can do, as two icons beside Home. Seeded once (a deleted icon stays deleted)
+# and executable, which is what xfdesktop needs to launch one directly. No file manager icon:
+# Home is already one.
 seed_desktop_icons() {
   local stamp="${HOME}/.agent37/desktop-icons-seeded" app
   [ -f "${stamp}" ] && return 0
   mkdir -p "${HOME}/Desktop" "$(dirname "${stamp}")"
-  for app in firefox xfce4-terminal thunar; do
+  for app in firefox xfce4-terminal; do
     [ -f "/usr/share/applications/${app}.desktop" ] \
       && install -m 0755 "/usr/share/applications/${app}.desktop" "${HOME}/Desktop/"
   done
