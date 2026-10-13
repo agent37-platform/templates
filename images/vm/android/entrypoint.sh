@@ -84,6 +84,21 @@ seed_emulator_settings
 start_screen
 adb start-server || true
 
+# A phone that boots to a black screen is the first thing an agent sees, and its first
+# screenshot. Once Android is up, wake the display, drop the (empty) keyguard and keep it
+# awake, so the screen in the browser and `adb exec-out screencap` both show the home screen.
+wake_when_booted() {
+  (
+    adb wait-for-device
+    until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 2; done
+    adb shell svc power stayon true
+    adb shell input keyevent KEYCODE_WAKEUP
+    adb shell wm dismiss-keyguard
+  ) >/tmp/wake.log 2>&1 &
+}
+
+wake_when_booted
+
 echo "android: booting ${AVD}; run android-wait for the boot to complete"
 exec emulator -avd "${AVD}" \
   -accel on -gpu swiftshader_indirect \
