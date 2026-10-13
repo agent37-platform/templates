@@ -23,18 +23,6 @@ respawn() {
   done
 }
 
-# Docker's data MUST live on the durable disk: the writable root is an overlayfs, and
-# extracting an image layer onto one fails on the whiteout device nodes it has to create.
-# dockerd is a convenience here, not the point of the image, so it is backgrounded and its
-# failure does not take the phone down with it.
-start_dockerd() {
-  mkdir -p "${HOME}/docker" /etc/docker
-  if [ ! -f /etc/docker/daemon.json ]; then
-    printf '{\n  "data-root": "%s"\n}\n' "${HOME}/docker" > /etc/docker/daemon.json
-  fi
-  respawn "${HOME}/dockerd.log" dockerd &
-}
-
 # The AVD is the phone's own storage, so it lives on the durable disk and is created once,
 # on first boot. $HOME is a fresh disk at that point: nothing the image baked here survives.
 create_avd() {
@@ -52,6 +40,14 @@ hw.keyboard=yes
 hw.gpu.enabled=yes
 hw.gpu.mode=swiftshader_indirect
 CONFIG
+}
+
+# The emulator refuses to start a second time on an AVD it thinks is already running, and a
+# VM that was stopped, restarted or moved never got to clean up its locks ("Running multiple
+# emulators with the same AVD is an experimental feature"). This box is one phone and the
+# entrypoint is the only thing that starts it, so a lock found here is always stale.
+clear_avd_locks() {
+  rm -rf "${ANDROID_AVD_HOME}/${AVD}.avd"/*.lock "${ANDROID_AVD_HOME}/running"
 }
 
 # The emulator asks, on every first boot, whether the operator really meant to run it under
@@ -79,8 +75,8 @@ start_screen() {
   respawn /tmp/novnc.log websockify --web /usr/share/novnc 6901 localhost:5900 &
 }
 
-start_dockerd
 create_avd
+clear_avd_locks
 seed_emulator_settings
 start_screen
 adb start-server || true
