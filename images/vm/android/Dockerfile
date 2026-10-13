@@ -44,9 +44,12 @@ RUN curl -fsSL "https://dl.google.com/android/repository/${CMDLINE_TOOLS_ZIP}" -
 # The SDK lives in the image, not on the instance's disk: it is read-only at runtime and
 # costs nothing against the disk you buy. The AVD is the opposite, and the entrypoint
 # creates it under $HOME.
+# The cleanup is deliberately tolerant: the SDK manager leaves a writer behind often enough
+# that `rm -rf /root/.android` returns "Directory not empty", and what it holds is dead
+# weight anyway (the durable disk shadows $HOME at runtime), not something to fail a build on.
 RUN yes | sdkmanager --licenses > /dev/null \
     && sdkmanager --install "platform-tools" "emulator" "${SYSTEM_IMAGE}" \
-    && rm -rf "${ANDROID_HOME}/.temp" /root/.android
+    && { rm -rf "${ANDROID_HOME}/.temp" /root/.android || true; }
 
 ENV ANDROID_SYSTEM_IMAGE="${SYSTEM_IMAGE}"
 # noVNC's own page, so the instance URL opens the screen instead of a directory listing.
