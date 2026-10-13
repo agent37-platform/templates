@@ -8,7 +8,10 @@ DEVICE="${ANDROID_AVD_DEVICE:-pixel_6}"
 SYSTEM_IMAGE="${ANDROID_SYSTEM_IMAGE}"
 RAM_MB="${ANDROID_AVD_RAM_MB:-2048}"
 DATA_MB="${ANDROID_AVD_DATA_MB:-6144}"
-GEOMETRY="${ANDROID_SCREEN_GEOMETRY:-900x1800x24}"
+# The emulator draws the phone at a fixed scale (a 1080x2400 device lands in a 411x914
+# window), so the screen is sized to the window plus its toolbar rather than the other way
+# round: anything larger is black bars around a small phone in the browser.
+GEOMETRY="${ANDROID_SCREEN_GEOMETRY:-560x1000x24}"
 DISPLAY_NUM=1
 
 export ANDROID_AVD_HOME="${HOME}/.android/avd"
