@@ -5,11 +5,13 @@
 # so the customer SSHes in (or execs) and runs their own containers, compose stacks, k3s or
 # emulator on a machine that behaves like any other Ubuntu box.
 #
-# It is also a machine you can look at: an XFCE desktop on 6080, a terminal on 7681 and a
-# file manager on 8080, the same three services (and the same ports) every Agent37 harness
-# image serves, so the dashboard gives the instance its Desktop, Terminal and Files buttons
-# with no per-template handling. Nothing here is a gate: dockerd stays the foreground
-# process, so the box lives or dies by the daemon and not by the desktop.
+# It is also a machine you can look at: an XFCE desktop on 6080, and that is the only port
+# this image binds. The harness images also serve a terminal on 7681 and a file manager on
+# 8080, and this image deliberately does not: a whole Ubuntu box is somewhere a customer
+# runs their own web app, and 8080 is the first port they reach for, so taking it broke a
+# customer's nginx the day we tried it. SSH (22022, injected by the platform) and the
+# desktop's own terminal already cover both. Nothing here is a gate: dockerd stays the
+# foreground process, so the box lives or dies by the daemon and not by the desktop.
 #
 # Bump = a new Ubuntu base or package set: bump the tag in images.json, publish via
 # scripts/publish-image.sh vm-ubuntu.
@@ -47,28 +49,6 @@ RUN install -d -m 0755 /etc/apt/keyrings \
     && apt-get update \
     && apt-get install -y --no-install-recommends firefox \
     && rm -rf /var/lib/apt/lists/*
-
-# The ttyd terminal (7681) and the FileBrowser file manager (8080), the same binaries and
-# ports the harness images serve, so the dashboard's buttons work unchanged.
-ARG TTYD_VERSION=1.7.7
-ARG FILEBROWSER_VERSION=v2.63.23
-ARG TARGETARCH
-RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
-    && case "${arch}" in \
-         amd64|x86_64) ttyd_arch="x86_64"; filebrowser_arch="amd64" ;; \
-         arm64|aarch64) ttyd_arch="aarch64"; filebrowser_arch="arm64" ;; \
-         *) echo "Unsupported arch: ${arch}" >&2; exit 1 ;; \
-       esac \
-    && curl -fsSL -o /usr/local/bin/ttyd \
-         "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${ttyd_arch}" \
-    && chmod 0755 /usr/local/bin/ttyd \
-    && curl -fsSL -o /tmp/filebrowser.tar.gz \
-         "https://github.com/filebrowser/filebrowser/releases/download/${FILEBROWSER_VERSION}/linux-${filebrowser_arch}-filebrowser.tar.gz" \
-    && tar -xzf /tmp/filebrowser.tar.gz -C /tmp filebrowser \
-    && install -m 0755 /tmp/filebrowser /usr/local/bin/filebrowser \
-    && rm -f /tmp/filebrowser.tar.gz /tmp/filebrowser \
-    && ttyd --version >/dev/null 2>&1 \
-    && filebrowser version >/dev/null 2>&1
 
 # noVNC's own page on /, connecting on load and sized to the browser window: the Desktop
 # button opens a desktop, not a connect dialog. defaults.json is noVNC's documented way to
