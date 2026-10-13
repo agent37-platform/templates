@@ -5,8 +5,10 @@
 # hardware virtualisation (`/dev/kvm`), which a real kernel has and a gVisor sandbox does
 # not.
 #
-# What the entrypoint brings up, in order: dockerd, the AVD (created on first boot), a
-# virtual display, x11vnc + noVNC on port 6901, then the emulator in the foreground.
+# What the entrypoint brings up, in order: the AVD (created on first boot), a virtual
+# display, x11vnc + noVNC on port 6901, then the emulator in the foreground. Nothing else
+# runs here: a phone is what the customer bought, and every other process on the box is
+# memory the emulator is not getting.
 #
 # Bump = a new SDK, system image or package set: bump the tag in images.json and publish via
 # scripts/publish-image.sh vm-android.
@@ -22,8 +24,7 @@ ARG SYSTEM_IMAGE="system-images;android-34;google_apis;x86_64"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates curl unzip tini default-jre-headless \
-        docker.io docker-compose-v2 kmod iproute2 webp \
+        ca-certificates curl unzip tini default-jre-headless webp \
         xvfb x11vnc novnc websockify openbox x11-utils \
         libgl1 libglu1-mesa libnss3 libpulse0 libasound2t64 libdbus-1-3 \
         libxcomposite1 libxcursor1 libxdamage1 libxi6 libxrandr2 libxtst6 \
@@ -51,8 +52,8 @@ ENV ANDROID_SYSTEM_IMAGE="${SYSTEM_IMAGE}"
 # noVNC's own page, so the instance URL opens the screen instead of a directory listing.
 RUN ln -sf /usr/share/novnc/vnc.html /usr/share/novnc/index.html
 
-# The instance's one durable disk is mounted here, so the AVD (the phone's own storage) and
-# dockerd's data-root both live under it and survive a restart, a resize and an image bump.
+# The instance's one durable disk is mounted here, so the AVD (the phone's own storage)
+# lives under it and survives a restart, a resize and an image bump.
 ENV HOME=/root
 WORKDIR /root
 
