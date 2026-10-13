@@ -7,7 +7,6 @@ AVD="${ANDROID_AVD_NAME:-agent37}"
 DEVICE="${ANDROID_AVD_DEVICE:-pixel_6}"
 SYSTEM_IMAGE="${ANDROID_SYSTEM_IMAGE}"
 RAM_MB="${ANDROID_AVD_RAM_MB:-2048}"
-DATA_MB="${ANDROID_AVD_DATA_MB:-6144}"
 # The emulator draws the phone at a fixed scale (a 1080x2400 device lands in a 411x914
 # window), so the screen is sized to the window plus its toolbar rather than the other way
 # round: anything larger is black bars around a small phone in the browser.
@@ -26,19 +25,34 @@ respawn() {
   done
 }
 
+# The phone's storage has to fit the disk the customer bought, and the emulator refuses to
+# start a partition it cannot fit with room to spare ("Not enough space to create userdata
+# partition. Available: 3933 MB, need 7372 MB" on a 4 GB disk). Take two thirds of what is
+# free, which leaves room for the quick-boot snapshot and the emulator's own temp files, and
+# never go below a GB and a half or above the 6 GB a phone ships with.
+default_data_mb() {
+  local free want
+  free="$(df -Pm "${HOME}" | awk 'NR==2 {print $4}')"
+  want=$(( free * 2 / 3 ))
+  [ "${want}" -gt 6144 ] && want=6144
+  [ "${want}" -lt 1536 ] && want=1536
+  echo "${want}"
+}
+
 # The AVD is the phone's own storage, so it lives on the durable disk and is created once,
 # on first boot. $HOME is a fresh disk at that point: nothing the image baked here survives.
 create_avd() {
   mkdir -p "${ANDROID_AVD_HOME}"
   [ -f "${ANDROID_AVD_HOME}/${AVD}.ini" ] && return 0
-  echo "android: creating AVD ${AVD} (${SYSTEM_IMAGE}, ${DEVICE})"
+  local data_mb="${ANDROID_AVD_DATA_MB:-$(default_data_mb)}"
+  echo "android: creating AVD ${AVD} (${SYSTEM_IMAGE}, ${DEVICE}, ${data_mb}M of storage)"
   avdmanager --silent create avd --name "${AVD}" --package "${SYSTEM_IMAGE}" \
     --device "${DEVICE}" --force
   local config="${ANDROID_AVD_HOME}/${AVD}.avd/config.ini"
   sed -i '/^hw\.ramSize=/d;/^disk\.dataPartition\.size=/d;/^hw\.keyboard=/d;/^hw\.gpu\./d' "${config}"
   cat >> "${config}" <<CONFIG
 hw.ramSize=${RAM_MB}
-disk.dataPartition.size=${DATA_MB}M
+disk.dataPartition.size=${data_mb}M
 hw.keyboard=yes
 hw.gpu.enabled=yes
 hw.gpu.mode=swiftshader_indirect
