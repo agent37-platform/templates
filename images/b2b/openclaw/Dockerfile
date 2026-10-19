@@ -62,12 +62,12 @@ RUN npm install -g "playwright@${PLAYWRIGHT_VERSION}" \
   && chmod -R a+rX "${PLAYWRIGHT_BROWSERS_PATH}"
 
 # Install OpenClaw version globally so it keeps working when /home/node is a persisted volume.
-# Pinned to 2026.9.4. 2026.9.5 and 9.6 crash-loop under gVisor (no openat2, openclaw/openclaw#152839,
-# fixed in 9.7). 2026.9.7 boots, but fs-safe's no-clobber create uses renameat2(RENAME_NOREPLACE),
-# which gets EINVAL on the sandbox's home mount and does not fall back, so every turn on a fresh
-# state dir fails. Remove this pin once https://github.com/openclaw/fs-safe/issues/828 ships in an
-# OpenClaw release. 9.7 also needs the 9p guard below at seven files.
-ARG OPENCLAW_VERSION=2026.9.4
+# Never below 2026.10.1 again: 2026.9.5 and 9.6 crash-loop under gVisor (no openat2,
+# openclaw/openclaw#152839), and 9.7 through 9.9 ship fs-safe 0.21.1, whose no-clobber create uses
+# renameat2(RENAME_NOREPLACE), which gets EINVAL on the sandbox's home mount and does not fall back,
+# so every turn on a fresh state dir fails (openclaw/fs-safe#828). 2026.10.1 is the first release
+# with the fallback. The extended-stable line (2026.9.33) still ships 0.21.1, so stay on latest.
+ARG OPENCLAW_VERSION=2026.10.5
 RUN echo "Installing OpenClaw ${OPENCLAW_VERSION}" \
   && curl -fsSL https://openclaw.ai/install.sh | bash -s -- \
     --install-method npm \
@@ -81,17 +81,18 @@ RUN echo "Installing OpenClaw ${OPENCLAW_VERSION}" \
 # OpenClaw >= 2026.8.1 treats a 9p filesystem as a cross-VM share and forces its SQLite
 # databases into rollback journaling (readers block writers). Every mount inside a gVisor
 # sandbox reports 9p, but it is a same-kernel passthrough, so WAL is safe there. Take 9p off
-# the check; the virtiofs/nfs/smb guards stay. The bundler inlines the check into three dist files
-# in 2026.9.4 (four as of 2026.9.5). Each edit must hit exactly once per file, so a future
-# release that moves the code fails the build instead of silently shipping unpatched.
+# the check; the virtiofs/nfs/smb guards stay. The bundler inlines the check into six dist files
+# in 2026.10.5, where the 9p magic (16914839) is an entry in a set of filesystem magics. Each edit
+# must hit exactly once per file, so a future release that moves the code fails the build instead
+# of silently shipping unpatched.
 RUN set -eu; dist="$(npm root -g)/openclaw/dist"; \
   files="$(grep -rlE 'LINUX_V9FS_SUPER_MAGIC|CROSS_VM_FILESYSTEM_TYPES' "${dist}" | grep -v control-ui)"; \
-  [ "$(printf '%s\n' ${files} | wc -l)" -eq 3 ] || { echo "expected 3 files with the 9p check, got: ${files}" >&2; exit 1; }; \
+  [ "$(printf '%s\n' ${files} | wc -l)" -eq 6 ] || { echo "expected 6 files with the 9p check, got: ${files}" >&2; exit 1; }; \
   for f in ${files}; do \
-    for pat in 'LINUX_V9FS_SUPER_MAGIC ?= ?16914839' '\.startsWith\(["`]9p["`]\)' '["`]9p["`],' '["`]9p2000\.l["`]'; do \
+    for pat in '\b16914839\b' '\.startsWith\(["`]9p["`]\)' '["`]9p["`],' '["`]9p2000\.l["`]'; do \
       [ "$(grep -cE "${pat}" "${f}")" -eq 1 ] || { echo "pattern ${pat} not found exactly once in ${f}" >&2; exit 1; }; \
     done; \
-    sed -i -E -e 's/LINUX_V9FS_SUPER_MAGIC ?= ?16914839/LINUX_V9FS_SUPER_MAGIC = -1/' \
+    sed -i -E -e 's/\b16914839\b/-1/' \
       -e 's/([A-Za-z_$][A-Za-z0-9_$]*)\.startsWith\(["`]9p["`]\)/false/' \
       -e 's/["`]9p["`],//' -e 's/["`]9p2000\.l["`]//' "${f}"; \
     node --check "${f}"; \
