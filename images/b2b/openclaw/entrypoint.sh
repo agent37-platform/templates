@@ -220,15 +220,14 @@ run_post_update_hook_if_needed() {
   # before 2026.8 have no capability consent on record, which also blocks the gateway.
   # `update repair` runs that doctor pass (--repair --non-interactive) and records the consent
   # in one go. Must run before start_openclaw_gateway (doctor refuses while a gateway owns the
-  # state dir). Spelled out rather than via openclaw_cmd because timeout(1) cannot exec a
-  # shell function.
+  # state dir).
+  # No time limit: on a large home a 2026.10.5 pass takes over 20 minutes, a limit killed it
+  # part-way on every boot, and the gateway cannot start until it finishes anyway.
   # Run it twice when the first pass fails: doctor checks that read the agent DB still see the
   # pre-upgrade schema in the same pass that upgraded it, and a second pass then completes.
   local doctor_ok=1
-  run_with_optional_timeout 600 /usr/bin/env "${RUNTIME_ENV_ASSIGNMENTS[@]}" \
-      /usr/local/bin/node /usr/local/bin/openclaw update repair --accept-capabilities --yes </dev/null \
-    || run_with_optional_timeout 600 /usr/bin/env "${RUNTIME_ENV_ASSIGNMENTS[@]}" \
-      /usr/local/bin/node /usr/local/bin/openclaw update repair --accept-capabilities --yes </dev/null \
+  openclaw_cmd update repair --accept-capabilities --yes </dev/null \
+    || openclaw_cmd update repair --accept-capabilities --yes </dev/null \
     || { doctor_ok=0; log "openclaw update repair failed; it will retry on next restart/update."; }
   if run_with_optional_timeout 900 bash "${AGENT37_POST_IMAGE_UPDATE_HOOK}" && [ "${doctor_ok}" = 1 ]; then
     printf '%s\n' "${AGENT37_RUNTIME_IMAGE_REF}" > "${AGENT37_LAST_IMAGE_REF_PATH}"
