@@ -225,6 +225,10 @@ if (controlUiOrigin) {
   config.gateway.controlUi = asObject(config.gateway.controlUi);
   delete config.gateway.controlUi.dangerouslyDisableDeviceAuth;
   config.gateway.controlUi.allowedOrigins = appendUniquePath(config.gateway.controlUi.allowedOrigins, controlUiOrigin);
+  // The address `openclaw qr` hands the OpenClaw iOS/Android app, which reaches it through the edge
+  // by sending the workspace key as a custom header. Without it pairing fails as "only bound to
+  // loopback". Always overwritten: a fork carries its source's config onto a new instance id.
+  config.gateway.publicOrigin = controlUiOrigin;
 } else {
   config.gateway.auth.mode = 'token';
 }
