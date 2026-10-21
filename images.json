@@ -4,11 +4,11 @@
   "b2b-grok": "2026.10.11a",
   "b2b-hermes": "2026.10.17a",
   "b2b-n8n": "2026.10.10a",
-  "b2b-openclaw": "2026.10.20a",
+  "b2b-openclaw": "2026.10.21a",
   "b2b-opencode": "2026.10.11a",
   "b2b-pi": "2026.10.11a",
   "consumer-app": "2026.10.17a",
-  "consumer-openclaw": "2026.10.20a",
+  "consumer-openclaw": "2026.10.21a",
   "vm-android": "2026.10.12d",
   "vm-ubuntu": "2026.10.13c"
 }
