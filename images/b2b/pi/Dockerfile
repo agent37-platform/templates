@@ -51,7 +51,7 @@ RUN apt-get update \
   && usermod -p '*' node
 
 # Preinstall uv so instruction-only Python skills that rely on `uv run` work immediately.
-ARG UV_VERSION=0.12.22
+ARG UV_VERSION=0.13.5
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
     | env UV_UNMANAGED_INSTALL="/usr/local/bin" sh \
   && command -v uv >/dev/null 2>&1 \
@@ -61,7 +61,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # exactly this binary (PI_BIN below), never a copy a user installs into the user-first PATH.
 # --ignore-scripts is upstream's own recommended install: it skips dependency install scripts,
 # and the published package declares none of its own.
-ARG PI_VERSION=1.1.0
+ARG PI_VERSION=1.4.0
 RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund --ignore-scripts "@earendil-works/pi-coding-agent@${PI_VERSION}" \
   && npm cache clean --force \
   && rm -rf /home/node/.cache /home/node/.npm \
@@ -73,7 +73,7 @@ RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund --ignore-sc
 # ~/.agent37-gateway on the volume at runtime. --omit=optional skips the Claude Agent SDK's
 # platform packages (unused by the pi adapter, which spawns one `pi --mode json` process per
 # turn via PI_BIN). The tag must be >= v0.16.0 (the pi adapter).
-ARG GATEWAY_VERSION=v0.18.0
+ARG GATEWAY_VERSION=v0.18.1
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \

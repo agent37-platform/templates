@@ -44,7 +44,7 @@ RUN apt-get update \
   && usermod -p '*' node
 
 # Preinstall uv so instruction-only Python skills that rely on `uv run` work immediately.
-ARG UV_VERSION=0.12.22
+ARG UV_VERSION=0.13.5
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
     | env UV_UNMANAGED_INSTALL="/usr/local/bin" sh \
   && command -v uv >/dev/null 2>&1 \
@@ -54,7 +54,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # spawns exactly this binary (GROK_BIN below), never a copy a user installs into the
 # user-first PATH. xAI ships prebuilt binaries from its CDN (the GitHub repo has no
 # releases); the .gz asset gunzips to the self-contained Rust binary.
-ARG GROK_VERSION=1.0.50
+ARG GROK_VERSION=1.0.67
 ARG TARGETARCH
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && case "${arch}" in \
@@ -73,7 +73,7 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
 # platform packages (unused by the grok adapter, which spawns one headless grok
 # process per turn via GROK_BIN). The tag must be >= v0.16.1, where the adapter hands grok
 # its prompt on a file: as an argv value the kernel caps a prompt at 128 KiB.
-ARG GATEWAY_VERSION=v0.18.0
+ARG GATEWAY_VERSION=v0.18.1
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \

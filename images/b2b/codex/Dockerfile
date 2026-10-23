@@ -47,7 +47,7 @@ RUN apt-get update \
   && usermod -p '*' node
 
 # Preinstall uv so instruction-only Python skills that rely on `uv run` work immediately.
-ARG UV_VERSION=0.12.22
+ARG UV_VERSION=0.13.5
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
     | env UV_UNMANAGED_INSTALL="/usr/local/bin" sh \
   && command -v uv >/dev/null 2>&1 \
@@ -56,7 +56,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # Bake Codex outside /home/node so the persisted volume cannot mask it. The gateway spawns
 # exactly this binary (CODEX_BIN below), never a copy a user installs into the user-first
 # PATH. npm is OpenAI's documented install path for Codex.
-ARG CODEX_VERSION=0.162.1
+ARG CODEX_VERSION=0.164.0
 RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund "@openai/codex@${CODEX_VERSION}" \
   && npm cache clean --force \
   && rm -rf /home/node/.cache /home/node/.npm \
@@ -68,7 +68,7 @@ RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund "@openai/co
 # ~/.agent37-gateway on the volume at runtime. --omit=optional skips the Claude Agent SDK's
 # platform packages (unused by the codex adapter, which spawns `codex app-server` via
 # CODEX_BIN over stdio). The tag must be >= v0.11.0 (the codex adapter).
-ARG GATEWAY_VERSION=v0.18.0
+ARG GATEWAY_VERSION=v0.18.1
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \

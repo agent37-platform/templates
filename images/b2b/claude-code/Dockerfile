@@ -44,7 +44,7 @@ RUN apt-get update \
   && usermod -p '*' node
 
 # Preinstall uv so instruction-only Python skills that rely on `uv run` work immediately.
-ARG UV_VERSION=0.12.22
+ARG UV_VERSION=0.13.5
 RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
     | env UV_UNMANAGED_INSTALL="/usr/local/bin" sh \
   && command -v uv >/dev/null 2>&1 \
@@ -53,7 +53,7 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # Bake Claude Code outside /home/node so the persisted volume cannot mask it. The gateway
 # spawns exactly this binary (CLAUDE_CODE_BIN below), never a copy a user installs into the
 # user-first PATH.
-ARG CLAUDE_CODE_VERSION=2.1.296
+ARG CLAUDE_CODE_VERSION=2.1.308
 RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
   && npm cache clean --force \
   && rm -rf /home/node/.cache /home/node/.npm \
@@ -73,7 +73,7 @@ COPY --chmod=0644 shared/claude-managed-settings.json /etc/claude-code/managed-s
 # platform packages (a second bundled Claude Code binary); the adapter spawns the baked CLI
 # above via CLAUDE_CODE_BIN, the same pairing the consumer app image runs in production.
 # The tag must be >= v0.9.0 (the claude-code adapter).
-ARG GATEWAY_VERSION=v0.18.0
+ARG GATEWAY_VERSION=v0.18.1
 RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37-platform/gateway.git /usr/local/lib/agent37-gateway \
   && cd /usr/local/lib/agent37-gateway \
   && npm ci --no-audit --no-fund --omit=optional \

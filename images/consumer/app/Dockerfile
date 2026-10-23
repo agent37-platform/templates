@@ -86,7 +86,7 @@ RUN echo "Installing minionsai@${MINIONSAI_VERSION}" \
 # spawns exactly this binary (CLAUDE_CODE_BIN below), never a copy a user installs into the
 # user-first PATH. It runs on the user's own Claude login (`claude auth login` in the
 # terminal); the image injects no credential for it.
-ARG CLAUDE_CODE_VERSION=2.1.296
+ARG CLAUDE_CODE_VERSION=2.1.308
 RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
   && npm cache clean --force \
   && rm -rf /home/node/.cache /home/node/.npm \
@@ -112,7 +112,7 @@ ENV CLAUDE_CODE_BIN=/usr/local/bin/claude
 # on the user's own ChatGPT login (`codex login --device-auth` in the terminal); the image
 # injects no credential for it. GATEWAY_DEFAULT_AGENT stays Hermes: Codex is one of the
 # per-conversation harness options here, not the instance default.
-ARG CODEX_VERSION=0.162.1
+ARG CODEX_VERSION=0.164.0
 RUN NPM_CONFIG_PREFIX=/usr/local npm install -g --no-audit --no-fund "@openai/codex@${CODEX_VERSION}" \
   && npm cache clean --force \
   && rm -rf /home/node/.cache /home/node/.npm \
@@ -135,7 +135,7 @@ ENV CODEX_BIN=/usr/local/bin/codex
 # spawns exactly this binary (OPENCODE_BIN below). GATEWAY_DEFAULT_AGENT stays Hermes: OpenCode is
 # one of the per-conversation harness options here, not the instance default.
 ARG TARGETARCH
-ARG OPENCODE_VERSION=1.18.35
+ARG OPENCODE_VERSION=1.19.4
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && case "${arch}" in \
        amd64|x86_64) oc_arch="x64" ;; \
@@ -163,7 +163,7 @@ ENV OPENCODE_BIN=/usr/local/bin/opencode
 # user's own xAI account (`grok login --device-code` in the terminal); the image injects no
 # credential for it. GATEWAY_DEFAULT_AGENT stays Hermes: Grok is one of the per-conversation
 # harness options here, not the instance default.
-ARG GROK_VERSION=1.0.50
+ARG GROK_VERSION=1.0.67
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && case "${arch}" in \
        amd64|x86_64) grok_arch="x86_64" ;; \
