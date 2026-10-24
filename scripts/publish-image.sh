@@ -20,6 +20,7 @@ Publish an Agent37 template image to GHCR, then tag the commit it was built from
 Usage: ./scripts/publish-image.sh <image> [flags]
 
 Images (key in images.json; Dockerfile under images/<dir>/):
+  b2b-base      images/b2b/base/. Pushes base, the plain sandbox with no agent
   b2b-hermes    images/b2b/hermes/. Pushes hermes-base (--target base)
                   and hermes (--target full)
   b2b-openclaw  images/b2b/openclaw/. Pushes openclaw-base and openclaw
@@ -68,6 +69,10 @@ PLATFORM="linux/amd64"
 
 # package:target pairs; an empty target builds the whole Dockerfile.
 case "${IMAGE_KEY}" in
+  b2b-base)
+    IMAGE_DIR="b2b/base"
+    PACKAGES=("base:")
+    ;;
   b2b-hermes)
     IMAGE_DIR="b2b/hermes"
     PACKAGES=("hermes-base:base" "hermes:full")
