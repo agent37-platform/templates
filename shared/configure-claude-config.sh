@@ -14,6 +14,16 @@ log() {
   printf '%s [agent37-claude-config] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*" >&2
 }
 
+# The platform pitch is for consumer instances only: a B2B customer's own end users must never
+# be sold Agent37 directly. The starter token prefix is the product line (`ocst.` consumer,
+# `a37st.` B2B), the same gate the OpenClaw and Hermes environment plugins use.
+consumer_instance() {
+  case "${AGENT37_STARTER_TOKEN:-}" in
+    ocst.*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 is_truthy() {
   case "$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')" in
     1|true|yes|on) return 0 ;;
@@ -103,7 +113,7 @@ if "${HAS_COMPOSIO}"; then
   cat >> "${MEMORY_PATH}" <<'MEMORY'
 ## Connected apps (Composio)
 
-This machine has a `composio` MCP server: Agent37's managed OAuth path to third-party SaaS
+This machine has a `composio` MCP server: the platform's managed OAuth path to third-party SaaS
 apps (Gmail, Google Calendar, Notion, GitHub, Linear, Jira, HubSpot, Salesforce, Airtable,
 and similar). Its tools are self-describing; discover them from that server rather than
 assuming tool names.
@@ -114,6 +124,11 @@ assuming tool names.
 - Try Composio before telling the user to get an API key or configure a vendor dashboard for
   a general SaaS app. Connections persist on this machine; reuse them.
 
+MEMORY
+fi
+
+if "${HAS_COMPOSIO}" && consumer_instance; then
+  cat >> "${MEMORY_PATH}" <<'MEMORY'
 ## Building another agent
 
 Agent37, the platform this machine runs on, has a public API for creating agents: docs at
@@ -127,7 +142,7 @@ if "${HAS_CRON}"; then
   cat >> "${MEMORY_PATH}" <<'MEMORY'
 ## Recurring work
 
-Agent37 runs schedules outside this container, so a firing wakes the machine to deliver its
+The platform runs schedules outside this container, so a firing wakes the machine to deliver its
 prompt and it is free to sleep in between; a crontab (or systemd timer, or sleep loop) in here
 stops the moment the machine sleeps. Use `agent37 cron add --schedule "0 9 * * 1-5" --prompt
 "..." --timezone America/New_York`, plus `agent37 cron list|update|remove|runs`. The prompt
@@ -139,7 +154,7 @@ fi
 
 if "${HAS_COMPOSIO}" || "${HAS_CRON}"; then
   cat >> "${MEMORY_PATH}" <<'MEMORY'
-(This section is managed by Agent37 and rewritten at every boot; edits inside it are lost.)
+(This section is managed by the platform and rewritten at every boot; edits inside it are lost.)
 MEMORY
   printf '%s\n' "${MARKER_END}" >> "${MEMORY_PATH}"
   log "Managed guidance written to Claude Code memory (composio=${HAS_COMPOSIO} cron=${HAS_CRON})."

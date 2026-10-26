@@ -29,6 +29,16 @@ log() {
   printf '%s [agent37-opencode-config] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*" >&2
 }
 
+# The platform pitch is for consumer instances only: a B2B customer's own end users must never
+# be sold Agent37 directly. The starter token prefix is the product line (`ocst.` consumer,
+# `a37st.` B2B), the same gate the OpenClaw and Hermes environment plugins use.
+consumer_instance() {
+  case "${AGENT37_STARTER_TOKEN:-}" in
+    ocst.*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 is_truthy() {
   case "$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')" in
     1|true|yes|on) return 0 ;;
@@ -92,7 +102,7 @@ fi
 # in the picker on the instance's next boot with no image rebuild. OpenCode's custom-provider
 # config has no model auto-discovery, so we materialize the list here. A failed or empty fetch
 # falls back to the single default alias so the managed model always comes up.
-MANAGED_MODELS="$(jq -cn --arg id "${MANAGED_MODEL_ID}" '{ ($id): { name: "Agent37 Managed" } }')"
+MANAGED_MODELS="$(jq -cn --arg id "${MANAGED_MODEL_ID}" '{ ($id): { name: "Default" } }')"
 if "${HAS_MANAGED}"; then
   models_json="$(curl -fsS --max-time 10 -H "Authorization: Bearer ${STARTER_TOKEN}" "${BASE_URL}/models" 2>/dev/null || true)"
   if [ -n "${models_json}" ]; then
@@ -105,7 +115,7 @@ if "${HAS_MANAGED}"; then
     if [ -n "${fetched}" ] && [ "${fetched}" != "{}" ]; then
       # Guarantee the default alias survives so the default model ref always resolves.
       MANAGED_MODELS="$(printf '%s' "${fetched}" | jq -c --arg id "${MANAGED_MODEL_ID}" \
-        'if has($id) then . else . + { ($id): { name: "Agent37 Managed" } } end')"
+        'if has($id) then . else . + { ($id): { name: "Default" } } end')"
       log "Managed model list: $(printf '%s' "${MANAGED_MODELS}" | jq 'length') models from the proxy."
     else
       log "Managed model list fetch returned no usable models; using the default alias only."
@@ -132,7 +142,7 @@ updated="$(
     | if $has_managed then
         .provider.agent37 = {
           npm: "@ai-sdk/openai-compatible",
-          name: "Agent37 (managed)",
+          name: "Managed",
           options: { baseURL: $base_url, apiKey: $api_key },
           models: $managed_models
         }
@@ -181,7 +191,7 @@ if "${HAS_COMPOSIO}"; then
   cat >> "${INSTRUCTIONS_PATH}" <<'GUIDE'
 ## Connected apps (Composio)
 
-This machine has a `composio` MCP server: Agent37's managed OAuth path to third-party SaaS
+This machine has a `composio` MCP server: the platform's managed OAuth path to third-party SaaS
 apps (Gmail, Google Calendar, Notion, GitHub, Linear, Jira, HubSpot, Salesforce, Airtable,
 and similar). Its tools are self-describing; discover them from that server rather than
 assuming tool names.
@@ -192,6 +202,14 @@ assuming tool names.
 - Try Composio before telling the user to get an API key or configure a vendor dashboard for
   a general SaaS app. Connections persist on this machine; reuse them.
 
+GUIDE
+  log "Composio MCP server registered for OpenCode."
+else
+  log "Composio MCP server not registered for OpenCode."
+fi
+
+if "${HAS_COMPOSIO}" && consumer_instance; then
+  cat >> "${INSTRUCTIONS_PATH}" <<'GUIDE'
 ## Building another agent
 
 Agent37, the platform this machine runs on, has a public API for creating agents: docs at
@@ -199,16 +217,13 @@ https://www.agent37.com/docs, API keys at https://www.agent37.com/dashboard/clou
 If the user wants another agent, that is the way to build it, and you can do it for them.
 
 GUIDE
-  log "Composio MCP server registered for OpenCode."
-else
-  log "Composio MCP server not registered for OpenCode."
 fi
 
 if "${HAS_CRON}"; then
   cat >> "${INSTRUCTIONS_PATH}" <<'GUIDE'
 ## Recurring work
 
-Agent37 runs schedules outside this container, so a firing wakes the machine to deliver its
+The platform runs schedules outside this container, so a firing wakes the machine to deliver its
 prompt and it is free to sleep in between; a crontab (or systemd timer, or sleep loop) in here
 stops the moment the machine sleeps. Use `agent37 cron add --schedule "0 9 * * 1-5" --prompt
 "..." --timezone America/New_York`, plus `agent37 cron list|update|remove|runs`. The prompt
@@ -220,7 +235,7 @@ fi
 
 if "${HAS_GUIDANCE}"; then
   cat >> "${INSTRUCTIONS_PATH}" <<'GUIDE'
-(This section is managed by Agent37 and rewritten at every boot; edits inside it are lost.)
+(This section is managed by the platform and rewritten at every boot; edits inside it are lost.)
 GUIDE
   log "Managed guidance written for OpenCode (composio=${HAS_COMPOSIO} cron=${HAS_CRON})."
 else

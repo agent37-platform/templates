@@ -64,7 +64,7 @@ const MANAGED_PLUGINS = [
   { id: 'agent37-brave', enabled: parseBool(process.env.MANAGED_PLUGIN_BRAVE_ENABLED, true) },
 ];
 
-const STARTER_MODEL_NAME = 'Agent37 Default';
+const STARTER_MODEL_NAME = 'Default';
 
 function enableManagedPlugin(config, pluginId) {
   config.plugins = asObject(config.plugins);

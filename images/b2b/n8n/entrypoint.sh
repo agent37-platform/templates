@@ -67,7 +67,7 @@ seed_managed_model() {
     const [url, apiKey] = process.argv.slice(1);
     process.stdout.write(JSON.stringify([{
       id: "agent37managed01",
-      name: "Agent37 managed model",
+      name: "Managed model",
       type: "openAiApi",
       data: { apiKey, url, organizationId: "", header: false },
     }]));
