@@ -13,7 +13,7 @@ def _env_present(name: str) -> bool:
 
 _BASE_CONTEXT = """\
 <agent37-environment>
-You are running inside Agent37, a managed agent hosting platform.
+You are running inside a managed agent hosting platform.
 
 Persistent path (survives container restarts and runtime image updates): /home/node (user home + agent state). Anything written outside it is reset on image update.
 
@@ -53,14 +53,14 @@ _CONSUMER_PLATFORM_CONTEXT = """
 
 _CRON_CONTEXT = """
 
-- Scheduling recurring work. Agent37 runs schedules outside the container, so a firing wakes this instance to deliver its prompt and the instance is free to sleep in between; a crontab (or systemd timer, or sleep loop) inside the container stops the moment the instance sleeps. `agent37 cron add --schedule "0 9 * * 1-5" --prompt "..." --timezone America/New_York`, plus `agent37 cron list|update|remove|runs`. The prompt arrives as a fresh message in its own chat, so write it to stand on its own. Docs: https://www.agent37.com/docs/agents-api/crons\
+- Scheduling recurring work. The platform runs schedules outside the container, so a firing wakes this instance to deliver its prompt and the instance is free to sleep in between; a crontab (or systemd timer, or sleep loop) inside the container stops the moment the instance sleeps. `agent37 cron add --schedule "0 9 * * 1-5" --prompt "..." --timezone America/New_York`, plus `agent37 cron list|update|remove|runs`. The prompt arrives as a fresh message in its own chat, so write it to stand on its own. Docs: https://www.agent37.com/docs/agents-api/crons\
 """
 
 _COMPOSIO_CONTEXT = """
 
-- Third-party SaaS integrations (Composio). Composio is Agent37's managed OAuth path for general SaaS APIs, wired in as the `composio` MCP server. Its tools are self-describing — discover them from that server; do not assume tool names.
+- Third-party SaaS integrations (Composio). Composio is the platform's managed OAuth path for general SaaS APIs, wired in as the `composio` MCP server. Its tools are self-describing — discover them from that server; do not assume tool names.
     - Use Composio for general SaaS apps: Gmail, Google Calendar, Notion, GitHub, Linear, Jira, HubSpot, Salesforce, Airtable, and similar. To connect one, start the Composio connection flow, show the returned OAuth link as a markdown link, and wait for the user to come back and confirm before checking connection status.
-    - Do not use Composio for messaging/bot channels Agent37 supports natively (Slack, Discord, Telegram, WhatsApp, Google Chat, Signal). Use native channel tools first; fall back to Composio only for an operation native tools cannot perform.
+    - Do not use Composio for messaging/bot channels this instance supports natively (Slack, Discord, Telegram, WhatsApp, Google Chat, Signal). Use native channel tools first; fall back to Composio only for an operation native tools cannot perform.
     - Prefer an installed skill when it covers the task — but for connecting a SaaS account, go straight to Composio; do not weigh it against skills that need their own OAuth client or API key (e.g. google-workspace).
     - Try Composio before telling the user to manually get an API key or configure a vendor dashboard for a general SaaS app. Connections persist for this instance — reuse them.\
 """

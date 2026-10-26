@@ -15,7 +15,7 @@ metadata:
 - The user wants something done on a repeating cadence: "check my email every weekday at 9", "post the summary every Friday", "watch this page hourly".
 - The user asks what is scheduled, wants a schedule paused, changed, or removed, or asks why one did not run.
 
-Prefer this over a crontab, `systemd` timer, `at`, or a long-running sleep loop. Agent37 runs the schedule outside the container: it wakes this instance to deliver the prompt, and between firings the instance is free to sleep. A schedule inside the container only runs while the container is running, so it stops the moment the instance sleeps and keeps it awake for nothing when it does not.
+Prefer this over a crontab, `systemd` timer, `at`, or a long-running sleep loop. The platform runs the schedule outside the container: it wakes this instance to deliver the prompt, and between firings the instance is free to sleep. A schedule inside the container only runs while the container is running, so it stops the moment the instance sleeps and keeps it awake for nothing when it does not.
 
 ## Procedure
 
