@@ -6,11 +6,11 @@
   "b2b-hermes": "2026.10.26a",
   "b2b-n8n": "2026.10.26a",
   "b2b-omnara": "2026.10.28a",
-  "b2b-openclaw": "2026.10.26a",
+  "b2b-openclaw": "2026.10.28a",
   "b2b-opencode": "2026.10.26a",
   "b2b-pi": "2026.10.26a",
   "consumer-app": "2026.10.23a",
-  "consumer-openclaw": "2026.10.21a",
+  "consumer-openclaw": "2026.10.28a",
   "vm-android": "2026.10.12d",
   "vm-ubuntu": "2026.10.13c"
 }
