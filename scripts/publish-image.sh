@@ -30,6 +30,8 @@ Images (key in images.json; Dockerfile under images/<dir>/):
   b2b-opencode  images/b2b/opencode/. Pushes opencode-base and opencode
   b2b-pi        images/b2b/pi/. Pushes pi-base and pi
   b2b-n8n       images/b2b/n8n/. Pushes n8n
+  b2b-omnara    images/b2b/omnara/. Pushes omnara, the default template of an
+                  Omnara machine pool
   consumer-app  images/consumer/app/. Pushes app
   consumer-openclaw  images/consumer/openclaw/. Pushes app-openclaw
   vm-ubuntu     images/vm/ubuntu/. Pushes ubuntu. A `type: 'vm'` image: it
@@ -104,6 +106,10 @@ case "${IMAGE_KEY}" in
   b2b-n8n)
     IMAGE_DIR="b2b/n8n"
     PACKAGES=("n8n:")
+    ;;
+  b2b-omnara)
+    IMAGE_DIR="b2b/omnara"
+    PACKAGES=("omnara:")
     ;;
   consumer-app)
     IMAGE_DIR="consumer/app"
