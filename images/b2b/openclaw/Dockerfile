@@ -67,7 +67,7 @@ RUN npm install -g "playwright@${PLAYWRIGHT_VERSION}" \
 # renameat2(RENAME_NOREPLACE), which gets EINVAL on the sandbox's home mount and does not fall back,
 # so every turn on a fresh state dir fails (openclaw/fs-safe#828). 2026.10.1 is the first release
 # with the fallback. The extended-stable line (2026.9.33) still ships 0.21.1, so stay on latest.
-ARG OPENCLAW_VERSION=2026.10.5
+ARG OPENCLAW_VERSION=2026.10.8
 RUN echo "Installing OpenClaw ${OPENCLAW_VERSION}" \
   && curl -fsSL https://openclaw.ai/install.sh | bash -s -- \
     --install-method npm \
@@ -82,7 +82,7 @@ RUN echo "Installing OpenClaw ${OPENCLAW_VERSION}" \
 # databases into rollback journaling (readers block writers). Every mount inside a gVisor
 # sandbox reports 9p, but it is a same-kernel passthrough, so WAL is safe there. Take 9p off
 # the check; the virtiofs/nfs/smb guards stay. The bundler inlines the check into six dist files
-# in 2026.10.5, where the 9p magic (16914839) is an entry in a set of filesystem magics. Each edit
+# in 2026.10.8, where the 9p magic (16914839) is an entry in a set of filesystem magics. Each edit
 # must hit exactly once per file, so a future release that moves the code fails the build instead
 # of silently shipping unpatched.
 RUN set -eu; dist="$(npm root -g)/openclaw/dist"; \
