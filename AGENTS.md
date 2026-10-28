@@ -28,6 +28,7 @@ This repo is public. Never commit a secret, a customer name, or an internal URL.
 | `images/b2b/opencode/` | `agent37-opencode` | `b2b-opencode` | `opencode-base`, `opencode` |
 | `images/b2b/pi/` | `agent37-pi` | `b2b-pi` | `pi-base`, `pi` |
 | `images/b2b/n8n/` | `agent37-n8n` | `b2b-n8n` | `n8n` |
+| `images/b2b/omnara/` | `agent37-omnara`: Ubuntu 24.04 as root with Omnara's default machine tools, the default template of an Omnara machine pool | `b2b-omnara` | `omnara` |
 | `images/consumer/app/` | Personal Agents (Hermes + desktop + extra harnesses), `FROM hermes` | `consumer-app` | `app` (private) |
 | `images/consumer/openclaw/` | Personal Agents on OpenClaw, `FROM openclaw` | `consumer-openclaw` | `app-openclaw` (private) |
 | `images/vm/ubuntu/` | `agent37-ubuntu`: Ubuntu with Docker, Compose and buildx plus an XFCE desktop, terminal and file manager, for `type: 'vm'` instances only | `vm-ubuntu` | `ubuntu` |

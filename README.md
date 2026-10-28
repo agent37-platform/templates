@@ -15,6 +15,7 @@ The Dockerfiles behind every [Agent37](https://www.agent37.com) system template.
 | `agent37-opencode` | `opencode` | `opencode-base` | [`images/b2b/opencode`](images/b2b/opencode) |
 | `agent37-pi` | `pi` | `pi-base` | [`images/b2b/pi`](images/b2b/pi) |
 | `agent37-n8n` | `n8n` | | [`images/b2b/n8n`](images/b2b/n8n) |
+| `agent37-omnara` (an [Omnara](https://docs.omnara.com) pool's default) | `omnara` | `omnara` | [`images/b2b/omnara`](images/b2b/omnara) |
 
 Every image is published at `ghcr.io/agent37-platform/<image>`. [`images/consumer`](images/consumer) holds the images behind Agent37 Personal Agents (the noVNC desktop and the extra harnesses), built on top of `hermes` and `openclaw`.
 
