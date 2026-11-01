@@ -44,7 +44,7 @@ const CONSUMER_HOSTING_CONTEXT = `
 
     Troubleshooting: if the URL returns 502, the server isn't running or is bound to a different port — check \`ss -ltnp\` and the log file.
 
-- No root access: \`sudo\` does not elevate here. Install tools with \`uv\` or npm/pip user installs.`;
+- Installing tools: \`sudo\` works, but anything outside your home folder (like \`apt-get\` installs) is reset when this agent is updated. Install with \`uv\` or npm/pip user installs so it stays.`;
 
 // The starter token prefix is the product line: subscription (consumer) instances keep an
 // `ocst.` credential across every recreate, B2B gets `a37st.`. It replaced a CLI-presence check

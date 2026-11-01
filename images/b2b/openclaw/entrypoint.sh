@@ -149,8 +149,6 @@ ensure_base_dirs() {
     "${PYTHON_USER_BIN}" \
     "${GATEWAY_HOME}" \
     "$(dirname "${FILEBROWSER_DB_PATH}")"
-  sudo -n chown -R "$(id -u):$(id -g)" "${OPENCLAW_STATE_DIR}" >/dev/null 2>&1 || true
-  sudo -n chown -R "$(id -u):$(id -g)" "${NPM_CONFIG_PREFIX}" >/dev/null 2>&1 || true
 }
 
 ensure_python_venv() {
