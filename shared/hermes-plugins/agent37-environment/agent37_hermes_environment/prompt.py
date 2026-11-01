@@ -43,7 +43,7 @@ _CONSUMER_HOSTING_CONTEXT = """
 
     `agent37 unexpose 3000` removes the link. `agent37 list-exposed` lists every live link — use it whenever the user asks about their links or reports one broken (if this instance was migrated, old links are dead; check `~/.hermes/MIGRATION.md` if present, then hand back the live URLs or re-expose).
 
-- No root access: `sudo` does not elevate here. Install tools with `uv` or npm/pip user installs.\
+- Installing tools: `sudo` works, but anything outside your home folder (like `apt-get` installs) is reset when this agent is updated. Install with `uv` or npm/pip user installs so it stays.\
 """
 
 _CONSUMER_PLATFORM_CONTEXT = """

@@ -197,7 +197,6 @@ ensure_base_dirs() {
     "${PYTHON_USER_BIN}" \
     "${HERMES_ROOT}" \
     "${GATEWAY_HOME}"
-  sudo -n chown -R "$(id -u):$(id -g)" "${NPM_CONFIG_PREFIX}" >/dev/null 2>&1 || true
 }
 
 ensure_python_venv() {
