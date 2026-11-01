@@ -159,6 +159,8 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && filebrowser version >/dev/null 2>&1
 
 COPY --chmod=0755 images/b2b/hermes/entrypoint.sh /usr/local/bin/entrypoint.sh
+# COPY --chmod would apply 0644 to a parent it creates, and node could not enter it.
+RUN install -d -m 0755 /usr/local/lib/agent37
 COPY --chmod=0644 shared/dashboard-relay.js /usr/local/lib/agent37/dashboard-relay.js
 
 ENV PATH=${HOME}/.venv/bin:${PYTHONUSERBASE}/bin:${NPM_CONFIG_PREFIX}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -258,7 +260,6 @@ PY
 # Managed LLM injection: the entrypoint runs this updater at boot to point Hermes
 # at the platform's starter-credential proxy. Its absence is what makes base
 # clean — the entrypoint skips the step when the file is not baked.
-RUN install -d -m 0755 /usr/local/lib/agent37
 COPY --chmod=0644 shared/configure-hermes-config.py /usr/local/lib/agent37/configure-hermes-config.py
 
 # The agent37 CLI: `cron` works on every instance, `expose` only on consumer ones (the
