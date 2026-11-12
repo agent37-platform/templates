@@ -64,11 +64,16 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # leaves out scripts/, so WhatsApp's bridge resolves to a path that does not exist.
 # The version check fails the build if the venv ever lands on the system interpreter.
 ARG HERMES_VERSION=v0.23.1
+# Bump to rebuild the environment at a new path without a version change. Hermes keys an agent's
+# own dependency state ($HERMES_HOME/installs/<key>) on that path, so a new one leaves behind
+# whatever a lazy install recorded there under an earlier image. 2: the Slack-only environments
+# 2026.11.11a let Hermes build, which an agent kept running, without MCP, across an update.
+ARG HERMES_ENV_GENERATION=2
 ARG UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python
 RUN install -d -o node -g node /usr/local/lib/hermes /home/node/.hermes /home/node/.local/bin "${UV_PYTHON_INSTALL_DIR}" \
   && touch /home/node/.bashrc \
   && chown node:node /home/node/.bashrc \
-  && echo "Installing Hermes Agent ${HERMES_VERSION}" \
+  && echo "Installing Hermes Agent ${HERMES_VERSION} (environment generation ${HERMES_ENV_GENERATION})" \
   && sudo -u node -H env HOME=/home/node SHELL=/bin/bash HERMES_HOME=/usr/local/lib/hermes \
     UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR}" bash -lc "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/${HERMES_VERSION}/scripts/install.sh | bash -s -- --skip-setup --skip-browser --skip-computer-use --branch ${HERMES_VERSION} --dir /usr/local/lib/hermes/hermes-agent" \
   && venv="$(ls -d /usr/local/lib/hermes/installs/*/environments/*/venv)" \
@@ -88,11 +93,17 @@ RUN install -d -o node -g node /usr/local/lib/hermes /home/node/.hermes /home/no
 ENV HERMES_RUNTIME_DIR=/usr/local/lib/hermes/tools
 ENV HERMES_WEB_DIST=/usr/local/lib/hermes/hermes-agent/hermes_cli/web_dist
 
-# Pre-bake the Telegram platform dep (this HERMES_VERSION's `telegram` extra in pyproject.toml);
-# the base stage bakes the rest of the messaging platforms and says why. PyYAML too: Hermes no
-# longer depends on it, and configure-hermes-config.py runs on this venv.
-RUN uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python "python-telegram-bot[webhooks]==22.8" "pyyaml==6.0.3" \
-  && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import telegram, telegram.ext, yaml"
+# Pre-bake this HERMES_VERSION's whole `messaging` extra (Telegram, Slack, Discord, the WhatsApp
+# QR), read from its own pyproject so the pins follow the version. A platform whose packages are
+# missing is installed by Hermes on first use into a fresh environment under $HERMES_HOME that holds
+# that one extra, and every later start runs from it: the platform then connects and MCP (Composio,
+# paid tools) is gone. PyYAML too: Hermes no longer depends on it, and configure-hermes-config.py
+# runs on this venv.
+RUN /usr/local/lib/hermes/hermes-agent/venv/bin/python -c 'import tomllib; print("\n".join(tomllib.load(open("/usr/local/lib/hermes/hermes-agent/pyproject.toml", "rb"))["project"]["optional-dependencies"]["messaging"]))' > /tmp/messaging.txt \
+  && cat /tmp/messaging.txt \
+  && uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python -r /tmp/messaging.txt "pyyaml==6.0.3" \
+  && rm /tmp/messaging.txt \
+  && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import telegram, telegram.ext, yaml, slack_bolt, slack_sdk, discord, mcp.client.streamable_http"
 
 # Bake the Agent37 gateway (the per-instance chat adapter) from its release tag.
 # It lives outside /home/node so the persisted volume cannot mask it; its state
@@ -220,18 +231,6 @@ RUN npm install -g "playwright@${PLAYWRIGHT_VERSION}" \
 RUN install -d -m 0755 /etc/hermes \
   && printf '%s' /usr/bin/chromium > /etc/hermes/chromium-executable-path \
   && test -x "$(cat /etc/hermes/chromium-executable-path)"
-
-# Pre-bake this HERMES_VERSION's whole `messaging` extra (Slack, Discord, the WhatsApp QR; Telegram
-# is already in), read from its own pyproject so the pins follow the version. A platform whose
-# packages are missing is installed by Hermes on first use into a fresh environment under
-# $HERMES_HOME that holds that one extra, and every later start runs from it: the platform then
-# connects and MCP (Composio, paid tools) is gone. A late layer of its own, so shipping it
-# re-uploads a few MB instead of the browser layers above.
-RUN /usr/local/lib/hermes/hermes-agent/venv/bin/python -c 'import tomllib; print("\n".join(tomllib.load(open("/usr/local/lib/hermes/hermes-agent/pyproject.toml", "rb"))["project"]["optional-dependencies"]["messaging"]))' > /tmp/messaging.txt \
-  && cat /tmp/messaging.txt \
-  && uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python -r /tmp/messaging.txt \
-  && rm /tmp/messaging.txt \
-  && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import slack_bolt, slack_sdk, discord, telegram, mcp.client.streamable_http"
 
 EXPOSE 9119
 
