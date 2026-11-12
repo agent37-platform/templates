@@ -210,6 +210,12 @@ RUN install -d -m 0755 /etc/hermes \
   && printf '%s' /usr/bin/chromium > /etc/hermes/chromium-executable-path \
   && test -x "$(cat /etc/hermes/chromium-executable-path)"
 
+# A login shell, which is what the agent's own terminal runs and what an SSH session is, starts
+# from Debian's default PATH, and Hermes then appends what its own process had, its launcher and
+# environment directories first. The customer's directories go in ahead of those, so `python` and
+# anything installed into ~/.venv resolve to the customer's copy, never to Hermes's environment.
+RUN printf '%s\n' 'PATH="$PATH:$HOME/.venv/bin:$HOME/.local/bin:$HOME/.npm-global/bin"' > /etc/profile.d/agent37-path.sh
+
 EXPOSE 9119
 
 USER node
