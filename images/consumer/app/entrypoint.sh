@@ -55,7 +55,7 @@ supervise_minions() {
 supervise_minions &
 
 # The desktop is a pro/max perk: the control plane sets AGENT_BROWSER_HEADED per tier on every
-# create/recreate (agentInstances.ts), and the base image defaults it to 0. With the desktop
+# create/recreate (agentInstances.ts), and unset reads as 0. With the desktop
 # skipped there is no X server at all (this image purges Xvfb), so a headed browser cannot
 # start — the agent's browser tools run headless, same as the b2b hermes image.
 if [ "${AGENT_BROWSER_HEADED:-0}" = "1" ]; then
