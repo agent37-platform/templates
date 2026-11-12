@@ -88,9 +88,9 @@ RUN install -d -o node -g node /usr/local/lib/hermes /home/node/.hermes /home/no
 ENV HERMES_RUNTIME_DIR=/usr/local/lib/hermes/tools
 ENV HERMES_WEB_DIST=/usr/local/lib/hermes/hermes-agent/hermes_cli/web_dist
 
-# Pre-bake the Telegram platform dep (this HERMES_VERSION's `telegram` extra in pyproject.toml):
-# the lazy install builds a fresh venv under $HERMES_HOME that this image never runs. PyYAML too:
-# Hermes no longer depends on it, and configure-hermes-config.py runs on this venv.
+# Pre-bake the Telegram platform dep (this HERMES_VERSION's `telegram` extra in pyproject.toml);
+# the base stage bakes the rest of the messaging platforms and says why. PyYAML too: Hermes no
+# longer depends on it, and configure-hermes-config.py runs on this venv.
 RUN uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python "python-telegram-bot[webhooks]==22.8" "pyyaml==6.0.3" \
   && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import telegram, telegram.ext, yaml"
 
@@ -220,6 +220,18 @@ RUN npm install -g "playwright@${PLAYWRIGHT_VERSION}" \
 RUN install -d -m 0755 /etc/hermes \
   && printf '%s' /usr/bin/chromium > /etc/hermes/chromium-executable-path \
   && test -x "$(cat /etc/hermes/chromium-executable-path)"
+
+# Pre-bake this HERMES_VERSION's whole `messaging` extra (Slack, Discord, the WhatsApp QR; Telegram
+# is already in), read from its own pyproject so the pins follow the version. A platform whose
+# packages are missing is installed by Hermes on first use into a fresh environment under
+# $HERMES_HOME that holds that one extra, and every later start runs from it: the platform then
+# connects and MCP (Composio, paid tools) is gone. A late layer of its own, so shipping it
+# re-uploads a few MB instead of the browser layers above.
+RUN /usr/local/lib/hermes/hermes-agent/venv/bin/python -c 'import tomllib; print("\n".join(tomllib.load(open("/usr/local/lib/hermes/hermes-agent/pyproject.toml", "rb"))["project"]["optional-dependencies"]["messaging"]))' > /tmp/messaging.txt \
+  && cat /tmp/messaging.txt \
+  && uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python -r /tmp/messaging.txt \
+  && rm /tmp/messaging.txt \
+  && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import slack_bolt, slack_sdk, discord, telegram, mcp.client.streamable_http"
 
 EXPOSE 9119
 
