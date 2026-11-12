@@ -11,6 +11,16 @@
 #            base + managed starter-credential, Brave, and Composio configuration.
 # Build context is the repo root so every stage shares shared/. Tags come from images.json;
 # publish via scripts/publish-image.sh b2b-hermes (pushes base and full at one tag).
+# Hermes itself is upstream's own Docker build; the core stage copies it in and says why. The
+# environment's python link is pointed at Hermes's bundled interpreter directly (upstream routes it
+# through /usr/local/bin/python3, which would put its Python ahead of Debian's on PATH here), and
+# the environment is handed to node (uid 1000) so `uv pip install --python "$HERMES_PYTHON"`
+# still works; the rest of the tree stays root's and read-only, as upstream ships it.
+ARG HERMES_VERSION=v0.23.1
+FROM nousresearch/hermes-agent:${HERMES_VERSION} AS hermes
+RUN ln -sfn "$(readlink -f /opt/hermes/.venv/bin/python)" /opt/hermes/.venv/bin/python \
+  && chown -R 1000:1000 /opt/hermes/.venv
+
 FROM node:24-bookworm AS core
 
 USER root
@@ -43,67 +53,35 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
   && command -v uv >/dev/null 2>&1 \
   && uv --version
 
-# Keep Hermes outside /home/node because that path is mounted as a persisted volume.
-# Pin the agent checkout as well as the installer script so builds do not float with main.
-# Since v0.21.6 the installer hands the venv, its uv-managed Python (python-build-standalone,
-# SQLite 3.53, clear of bookworm's WAL-reset bug) and the tools it manages to Hermes's own package
-# manager, which keeps them under the data root, $HERMES_HOME. Installing with HERMES_HOME set to
-# the directory the checkout sits in (which Hermes treats as the checkout's owner) keeps all of it
-# off the volume; the runtime HERMES_HOME stays ~/.hermes, and HERMES_RUNTIME_DIR below points the
-# runtime at the baked tools. The venv is linked at the stable checkout/venv path every caller
-# uses. Dropped after install: the installer's ~/.local/bin launchers (they only run under the
-# install data root) and the home it seeds into the data root (config, bundled skills, caches),
-# since /usr/local/lib/hermes/skills is the baked external skills dir. Stamped image-managed
-# (`.install_method`, next to both the checkout and the code the venv runs) so `hermes update`
-# refuses in place: updates ship as a new image. Like upstream's own image, the checkout drops its
-# .git and both it and the code the venv runs carry the install stamp marked `external`: the gateway
-# worker imports Hermes from the checkout, and a git checkout stamped self-updating tries to rebuild
-# its venv at launch. The stamp also makes `hermes --version` report the real version.
-# --skip-browser: the base stage points Hermes at the image's Chromium, and core ships none.
-# Known upstream gap on this install form: the code the venv runs is a snapshot of the checkout that
-# leaves out scripts/, so WhatsApp's bridge resolves to a path that does not exist.
-# The version check fails the build if the venv ever lands on the system interpreter.
-ARG HERMES_VERSION=v0.23.1
-# Bump to rebuild the environment at a new path without a version change. Hermes keys an agent's
-# own dependency state ($HERMES_HOME/installs/<key>) on that path, so a new one leaves behind
-# whatever a lazy install recorded there under an earlier image. 2: the Slack-only environments
-# 2026.11.11a let Hermes build, which an agent kept running, without MCP, across an update.
-ARG HERMES_ENV_GENERATION=2
-ARG UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python
-RUN install -d -o node -g node /usr/local/lib/hermes /home/node/.hermes /home/node/.local/bin "${UV_PYTHON_INSTALL_DIR}" \
-  && touch /home/node/.bashrc \
-  && chown node:node /home/node/.bashrc \
-  && echo "Installing Hermes Agent ${HERMES_VERSION} (environment generation ${HERMES_ENV_GENERATION})" \
-  && sudo -u node -H env HOME=/home/node SHELL=/bin/bash HERMES_HOME=/usr/local/lib/hermes \
-    UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR}" bash -lc "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/${HERMES_VERSION}/scripts/install.sh | bash -s -- --skip-setup --skip-browser --skip-computer-use --branch ${HERMES_VERSION} --dir /usr/local/lib/hermes/hermes-agent" \
-  && venv="$(ls -d /usr/local/lib/hermes/installs/*/environments/*/venv)" \
-  && [ "$(printf '%s\n' ${venv} | wc -l)" -eq 1 ] \
-  && sudo -u node ln -sfn "${venv}" /usr/local/lib/hermes/hermes-agent/venv \
-  && ln -sf /usr/local/lib/hermes/hermes-agent/venv/bin/hermes /usr/local/bin/hermes \
-  && echo docker | tee /usr/local/lib/hermes/hermes-agent/.install_method "$(dirname "${venv}")/workspace/.install_method" \
-  && python3 -c 'import json, sys; s = json.load(open(sys.argv[1])); s["updateMechanism"] = "external"; [open(p, "w").write(json.dumps(s) + "\n") for p in sys.argv[1:]]' \
-    /usr/local/lib/hermes/hermes-agent/install-stamp.json "$(dirname "${venv}")/workspace/install-stamp.json" \
-  && rm -rf /usr/local/lib/hermes/hermes-agent/.git \
-  && test -f /usr/local/lib/hermes/hermes-agent/hermes_cli/web_dist/index.html \
-  && rm -f /home/node/.local/bin/hermes /home/node/.local/bin/hermes-acp /home/node/.local/bin/hermes-agent \
-  && find /usr/local/lib/hermes -mindepth 1 -maxdepth 1 ! -name installs ! -name tools ! -name hermes-agent -exec rm -rf {} + \
-  && sudo -u node -H env HOME=/home/node HERMES_RUNTIME_DIR=/usr/local/lib/hermes/tools /usr/local/bin/hermes --help >/dev/null 2>&1 \
-  && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import sqlite3, sys; sys.exit(f'venv SQLite {sqlite3.sqlite_version} has the WAL-reset bug (want 3.51.3+)') if sqlite3.sqlite_version_info < (3, 51, 3) else print('venv SQLite', sqlite3.sqlite_version, 'via', sys.base_prefix)" \
-  && rm -rf /home/node/.cache /home/node/.npm /tmp/*
-ENV HERMES_RUNTIME_DIR=/usr/local/lib/hermes/tools
-ENV HERMES_WEB_DIST=/usr/local/lib/hermes/hermes-agent/hermes_cli/web_dist
-
-# Pre-bake this HERMES_VERSION's whole `messaging` extra (Telegram, Slack, Discord, the WhatsApp
-# QR), read from its own pyproject so the pins follow the version. A platform whose packages are
-# missing is installed by Hermes on first use into a fresh environment under $HERMES_HOME that holds
-# that one extra, and every later start runs from it: the platform then connects and MCP (Composio,
-# paid tools) is gone. PyYAML too: Hermes no longer depends on it, and configure-hermes-config.py
-# runs on this venv.
-RUN /usr/local/lib/hermes/hermes-agent/venv/bin/python -c 'import tomllib; print("\n".join(tomllib.load(open("/usr/local/lib/hermes/hermes-agent/pyproject.toml", "rb"))["project"]["optional-dependencies"]["messaging"]))' > /tmp/messaging.txt \
-  && cat /tmp/messaging.txt \
-  && uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python -r /tmp/messaging.txt "pyyaml==6.0.3" \
-  && rm /tmp/messaging.txt \
-  && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import telegram, telegram.ext, yaml, slack_bolt, slack_sdk, discord, mcp.client.streamable_http"
+# Hermes is upstream's own Docker build, copied whole from its published image: the full source
+# tree, the Python environment beside it with every messaging platform already in, Hermes's own
+# Python, Node and browser under tools/, and the manifest that binds them. It is the one layout
+# Hermes supports with its home on a separate volume, because nothing it needs to start lives under
+# $HERMES_HOME: its dashboard can restart the gateway, the chat tab and the WhatsApp bridge find
+# their files, and connecting a platform never swaps in an environment without the rest. The
+# desktop installer this replaced keys all of that on the home it was run under, which here is
+# never the home an instance boots with. It lives outside /home/node, which is the persisted
+# volume. `hermes update` refuses in place (the tree is stamped docker): updates ship as a new
+# image. /usr/local/lib/hermes/hermes-agent and its venv/ are the paths images before 2026.11.12b
+# used, kept as links. PyYAML is for configure-hermes-config.py, which runs on this environment.
+# The version check fails the build if the environment ever lands on the system interpreter.
+COPY --from=hermes /opt/hermes /opt/hermes
+ENV HERMES_RUNTIME_DIR=/opt/hermes/tools
+ENV HERMES_WEB_DIST=/opt/hermes/hermes_cli/web_dist
+ENV HERMES_TUI_DIR=/opt/hermes/ui-tui
+RUN ln -s /opt/hermes/.venv/bin/hermes /usr/local/bin/hermes \
+  && ln -s .venv /opt/hermes/venv \
+  && install -d -m 0755 /usr/local/lib/hermes \
+  && ln -s /opt/hermes /usr/local/lib/hermes/hermes-agent \
+  && install -d -o node -g node /home/node/.hermes \
+  && test -f /opt/hermes/hermes_cli/web_dist/index.html \
+  && test -f /opt/hermes/ui-tui/dist/entry.js \
+  && test -f /opt/hermes/scripts/whatsapp-bridge/bridge.js \
+  && sudo -u node -H env HOME=/home/node hermes --version \
+  && uv pip install --python /opt/hermes/.venv/bin/python "pyyaml==6.0.3" \
+  && /usr/local/lib/hermes/hermes-agent/venv/bin/python -c "import telegram, telegram.ext, yaml, slack_bolt, slack_sdk, discord, mcp.client.streamable_http" \
+  && /opt/hermes/.venv/bin/python -c "import sqlite3, sys; sys.exit(f'venv SQLite {sqlite3.sqlite_version} has the WAL-reset bug (want 3.51.3+)') if sqlite3.sqlite_version_info < (3, 51, 3) else print('venv SQLite', sqlite3.sqlite_version, 'via', sys.base_prefix)" \
+  && rm -rf /home/node/.cache /root/.cache /tmp/*
 
 # Bake the Agent37 gateway (the per-instance chat adapter) from its release tag.
 # It lives outside /home/node so the persisted volume cannot mask it; its state
@@ -119,16 +97,16 @@ RUN git clone --depth 1 --branch "${GATEWAY_VERSION}" https://github.com/agent37
   && npm prune --omit=dev \
   && npm cache clean --force \
   && test -f dist/server/server/index.js \
-  && out="$(env HOME=/tmp HERMES_AGENT_DIR=/usr/local/lib/hermes/hermes-agent \
-    /usr/local/lib/hermes/hermes-agent/venv/bin/python server/workers/hermes_worker.py --self-test)" \
+  && out="$(env HOME=/tmp HERMES_AGENT_DIR=/opt/hermes \
+    /opt/hermes/.venv/bin/python server/workers/hermes_worker.py --self-test)" \
   && printf '%s\n' "$out" \
   && printf '%s' "$out" | grep -q '"ok": true'
 
 # Platform awareness: this plugin injects persistent-path and hook context into
 # the prompt and self-gates on what is installed, so it belongs in core.
 COPY shared/hermes-plugins/agent37-environment/ /usr/local/lib/hermes/plugins/agent37-environment/
-RUN uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python /usr/local/lib/hermes/plugins/agent37-environment \
-  && /usr/local/lib/hermes/hermes-agent/venv/bin/python - <<'PY'
+RUN uv pip install --python /opt/hermes/.venv/bin/python /usr/local/lib/hermes/plugins/agent37-environment \
+  && /opt/hermes/.venv/bin/python - <<'PY'
 import importlib.metadata
 
 entry_points = importlib.metadata.entry_points()
@@ -145,8 +123,8 @@ ENV HOME=/home/node
 ENV NPM_CONFIG_PREFIX=${HOME}/.npm-global
 ENV PYTHONUSERBASE=${HOME}/.local
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-ENV HERMES_AGENT_DIR=/usr/local/lib/hermes/hermes-agent
-ENV HERMES_PYTHON=/usr/local/lib/hermes/hermes-agent/venv/bin/python
+ENV HERMES_AGENT_DIR=/opt/hermes
+ENV HERMES_PYTHON=/opt/hermes/.venv/bin/python
 ENV GATEWAY_WORKSPACE_DIR=${HOME}
 
 # Browser services reachable through the edge as signed URLs: the ttyd terminal (7681) and the
@@ -225,12 +203,18 @@ RUN npm install -g "playwright@${PLAYWRIGHT_VERSION}" \
   && chmod -R a+rX "${PLAYWRIGHT_BROWSERS_PATH}"
 
 # Hermes drives the browser itself (browser_exec; agent-browser and the built-in browser_* tools
-# left in v0.22.6). It runs the Chromium this file names, the contract of upstream's own image,
-# so it never downloads a build of its own, and it stays headless and adds --no-sandbox by itself
-# in a container (Chromium's own sandbox cannot start under gVisor).
+# left in v0.22.6) with the Chromium build it ships under /opt/hermes/tools, so it never downloads
+# one, and it stays headless and adds --no-sandbox by itself in a container (Chromium's own sandbox
+# cannot start under gVisor). This file is what it falls back to when that build is missing.
 RUN install -d -m 0755 /etc/hermes \
   && printf '%s' /usr/bin/chromium > /etc/hermes/chromium-executable-path \
   && test -x "$(cat /etc/hermes/chromium-executable-path)"
+
+# A login shell, which is what the agent's own terminal runs and what an SSH session is, starts
+# from Debian's default PATH, and Hermes then appends what its own process had, its launcher and
+# environment directories first. The customer's directories go in ahead of those, so `python` and
+# anything installed into ~/.venv resolve to the customer's copy, never to Hermes's environment.
+RUN printf '%s\n' 'PATH="$PATH:$HOME/.venv/bin:$HOME/.local/bin:$HOME/.npm-global/bin"' > /etc/profile.d/agent37-path.sh
 
 EXPOSE 9119
 
@@ -245,8 +229,8 @@ ENV AGENT37_MANAGED_INTEGRATIONS=1
 # Managed integrations: Brave search + Composio, driven by the platform's
 # starter credentials passed as env at runtime.
 COPY shared/hermes-plugins/agent37-brave/ /usr/local/lib/hermes/plugins/agent37-brave/
-RUN uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python /usr/local/lib/hermes/plugins/agent37-brave \
-  && /usr/local/lib/hermes/hermes-agent/venv/bin/python - <<'PY'
+RUN uv pip install --python /opt/hermes/.venv/bin/python /usr/local/lib/hermes/plugins/agent37-brave \
+  && /opt/hermes/.venv/bin/python - <<'PY'
 import importlib.metadata
 
 entry_points = importlib.metadata.entry_points()

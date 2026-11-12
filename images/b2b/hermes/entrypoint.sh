@@ -47,8 +47,8 @@ CLAUDE_CONFIG_UPDATER_SCRIPT="/usr/local/lib/agent37/configure-claude-config.sh"
 CODEX_CONFIG_UPDATER_SCRIPT="/usr/local/lib/agent37/configure-codex-config.sh"
 OPENCODE_CONFIG_UPDATER_SCRIPT="/usr/local/lib/agent37/configure-opencode-config.sh"
 GROK_CONFIG_UPDATER_SCRIPT="/usr/local/lib/agent37/configure-grok-config.sh"
-HERMES_AGENT_DIR="${HERMES_AGENT_DIR:-/usr/local/lib/hermes/hermes-agent}"
-HERMES_PYTHON="${HERMES_PYTHON:-${HERMES_AGENT_DIR}/venv/bin/python}"
+HERMES_AGENT_DIR="${HERMES_AGENT_DIR:-/opt/hermes}"
+HERMES_PYTHON="${HERMES_PYTHON:-${HERMES_AGENT_DIR}/.venv/bin/python}"
 GATEWAY_DIR="/usr/local/lib/agent37-gateway"
 GATEWAY_HOME="${AGENT37_GATEWAY_HOME:-${HOME}/.agent37-gateway}"
 GATEWAY_WORKSPACE_DIR="${GATEWAY_WORKSPACE_DIR:-${HOME}}"
@@ -160,15 +160,33 @@ build_runtime_env_assignments() {
 
 # The managed gateway and dashboard must run the baked CLI: migrated homes carry
 # self-installed hermes in ~/.local/bin and ~/.venv/bin that shadow it via the customer-first
-# PATH above (which the gateway's child shells still inherit, by design). The venv entry point
-# is a Python console script whose shebang is already the absolute venv interpreter, so it
-# needs no interpreter prefix (unlike openclaw_cmd, which prefixes /usr/local/bin/node).
+# PATH above (which the gateway's child shells still inherit, by design). The entry point is
+# upstream's own launcher, which runs the interpreter and the code beside it by absolute path.
 # `env` is pinned too: bash resolves it through PATH before it ever applies the PATH=
 # assignment below, so a bare `env` would re-open the hole this function exists to close.
 # The profile selector goes AFTER the subcommand (Hermes pre-parses -p anywhere in argv), so
-# the process cmdline keeps reading `hermes gateway run ...` for anything that matches on it.
+# the process cmdline keeps ending `gateway run ...` for anything that matches on it.
 hermes_cmd() {
-  /usr/bin/env "${RUNTIME_ENV_ASSIGNMENTS[@]}" /usr/local/lib/hermes/hermes-agent/venv/bin/hermes "$@" "${HERMES_PROFILE_ARGS[@]}"
+  /usr/bin/env "${RUNTIME_ENV_ASSIGNMENTS[@]}" /opt/hermes/.venv/bin/hermes "$@" "${HERMES_PROFILE_ARGS[@]}"
+}
+
+# What upstream's own image does at every boot (docker/stage2-hook.sh). Packages Hermes installed
+# on request (an opt-in backend, a plugin's dependencies) live in an environment on the volume,
+# built against the image it was installed under: after an update that environment is rebuilt for
+# the new one before anything boots onto it, and environments nothing selects are removed. A home
+# with none, which is nearly every one, returns at once.
+refresh_hermes_dependencies() {
+  /usr/bin/env "${RUNTIME_ENV_ASSIGNMENTS[@]}" "${HERMES_PYTHON}" -c '
+from pathlib import Path
+from hermes_cli.runtime_state import collect_generations
+from pm.environments import install_state_dir
+from pm.recovery import refresh_dependencies
+from pm.runtime import collect_runtime_generations
+root = Path("/opt/hermes")
+print("dependency environment:", refresh_dependencies(root))
+removed = collect_generations(root) + collect_runtime_generations(install_state_dir(root) / "pm-runtime")
+print("collected", len(removed), "unused dependency generations")
+' 2>&1 | while IFS= read -r line; do log "hermes ${line}"; done
 }
 
 monitor_http_ready() {
@@ -610,6 +628,7 @@ if [ -x /usr/bin/Xvfb ] && [ -x /usr/bin/openbox ]; then
 else
   log "No display stack in this image; skipping Xvfb/openbox."
 fi
+refresh_hermes_dependencies || log "Warning: Hermes dependency refresh failed; continuing."
 start_hermes_gateway
 if is_truthy "${HERMES_DASHBOARD_ENABLED}"; then
   start_hermes_dashboard

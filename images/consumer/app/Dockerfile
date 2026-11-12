@@ -13,7 +13,7 @@
 #
 # Build context is docker/ so it shares shared/. Tag comes from docker/images.json; publish via
 # scripts/publish-image.sh consumer-app. Bump HERMES_BASE_TAG together with b2b-hermes.
-ARG HERMES_BASE_TAG=2026.11.12a
+ARG HERMES_BASE_TAG=2026.11.12b
 FROM ghcr.io/agent37-platform/hermes:${HERMES_BASE_TAG}
 
 USER root
@@ -53,9 +53,9 @@ COPY --chmod=0644 shared/hermes-skills/agent37-cron/SKILL.md /usr/local/lib/herm
 COPY --chmod=0644 shared/configure-hermes-config.py /usr/local/lib/agent37/configure-hermes-config.py
 
 COPY shared/hermes-plugins/agent37-environment/ /usr/local/lib/hermes/plugins/agent37-environment/
-RUN uv pip install --python /usr/local/lib/hermes/hermes-agent/venv/bin/python \
+RUN uv pip install --python /opt/hermes/.venv/bin/python \
     --reinstall-package agent37-hermes-environment /usr/local/lib/hermes/plugins/agent37-environment \
-  && /usr/local/lib/hermes/hermes-agent/venv/bin/python - <<'PY'
+  && /opt/hermes/.venv/bin/python - <<'PY'
 import importlib.metadata
 
 entry_points = importlib.metadata.entry_points()
