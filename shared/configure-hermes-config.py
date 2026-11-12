@@ -286,14 +286,21 @@ if "mode" not in approvals_config:
     approvals_config["mode"] = "off"
 config["approvals"] = approvals_config
 
-# Hermes defaults the browser to the Browser Use CLI whenever uvx can run it, and in a
-# sandbox that path can only reach their paid cloud (402). "off" restores the built-in
-# browser_* tools, which drive the image's Chromium via the baked agent-browser CLI. Only
-# a default: an explicit customer backend choice is preserved.
+# An image that bakes agent-browser runs a Hermes that defaults the browser to the Browser Use
+# CLI whenever uvx can run it, and in a sandbox that path can only reach their paid cloud (402).
+# "off" restores the built-in browser_* tools, which drive the image's Chromium via agent-browser.
+# Only a default: an explicit customer backend choice is preserved. Hermes since v0.22.6 has one
+# browser and no such key, so there the "off" an earlier boot wrote goes.
 browser_config = as_object(config.get("browser"))
-if not as_non_empty_string(browser_config.get("backend")):
-    browser_config["backend"] = "off"
-config["browser"] = browser_config
+if os.path.exists("/usr/local/bin/agent-browser"):
+    if not as_non_empty_string(browser_config.get("backend")):
+        browser_config["backend"] = "off"
+elif browser_config.get("backend") in ("off", False):
+    del browser_config["backend"]
+if browser_config:
+    config["browser"] = browser_config
+else:
+    config.pop("browser", None)
 
 # Image-baked skills (consumer images bake e.g. the agent37-expose skill here); registering the
 # directory keeps the skill live from the image instead of a stale copy on the persisted volume.

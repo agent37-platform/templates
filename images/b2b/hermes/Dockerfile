@@ -59,11 +59,11 @@ RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" \
 # .git and both it and the code the venv runs carry the install stamp marked `external`: the gateway
 # worker imports Hermes from the checkout, and a git checkout stamped self-updating tries to rebuild
 # its venv at launch. The stamp also makes `hermes --version` report the real version.
-# --skip-browser: the base stage bakes agent-browser on the image's Chromium, and core ships none.
+# --skip-browser: the base stage points Hermes at the image's Chromium, and core ships none.
 # Known upstream gap on this install form: the code the venv runs is a snapshot of the checkout that
 # leaves out scripts/, so WhatsApp's bridge resolves to a path that does not exist.
 # The version check fails the build if the venv ever lands on the system interpreter.
-ARG HERMES_VERSION=v0.22.5
+ARG HERMES_VERSION=v0.23.1
 ARG UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python
 RUN install -d -o node -g node /usr/local/lib/hermes /home/node/.hermes /home/node/.local/bin "${UV_PYTHON_INSTALL_DIR}" \
   && touch /home/node/.bashrc \
@@ -213,23 +213,13 @@ RUN npm install -g "playwright@${PLAYWRIGHT_VERSION}" \
   && playwright install chromium \
   && chmod -R a+rX "${PLAYWRIGHT_BROWSERS_PATH}"
 
-# agent-browser: the CLI behind Hermes' built-in browser_* tools, pointed at the image's
-# Chromium so it never downloads Chrome for Testing. Without it Hermes defaults to the
-# Browser Use CLI (runnable via the baked uvx), whose only path in a sandbox is their paid
-# cloud browser — 402 for every customer. --no-sandbox matches the desktop launcher:
-# Chromium's own sandbox cannot start under gVisor.
-# /usr/local, not the image's NPM_CONFIG_PREFIX: that points into /home/node, which the
-# persisted home volume masks at runtime.
-ARG AGENT_BROWSER_VERSION=0.38.2
-RUN NPM_CONFIG_PREFIX=/usr/local npm install -g "agent-browser@${AGENT_BROWSER_VERSION}" \
-  && /usr/local/bin/agent-browser --version
-ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
-ENV AGENT_BROWSER_ARGS="--no-sandbox,--disable-dev-shm-usage"
-
-# Headless: nothing renders the display. B2B has no desktop port at all, and on the consumer
-# images the desktop is opened so rarely that a visible browser only ever painted for nobody.
-# The control plane overrides this to 1 for pro/max subscription instances (live browser).
-ENV AGENT_BROWSER_HEADED=0
+# Hermes drives the browser itself (browser_exec; agent-browser and the built-in browser_* tools
+# left in v0.22.6). It runs the Chromium this file names, the contract of upstream's own image,
+# so it never downloads a build of its own, and it stays headless and adds --no-sandbox by itself
+# in a container (Chromium's own sandbox cannot start under gVisor).
+RUN install -d -m 0755 /etc/hermes \
+  && printf '%s' /usr/bin/chromium > /etc/hermes/chromium-executable-path \
+  && test -x "$(cat /etc/hermes/chromium-executable-path)"
 
 EXPOSE 9119
 
