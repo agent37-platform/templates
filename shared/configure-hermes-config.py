@@ -290,13 +290,18 @@ config["approvals"] = approvals_config
 # CLI whenever uvx can run it, and in a sandbox that path can only reach their paid cloud (402).
 # "off" restores the built-in browser_* tools, which drive the image's Chromium via agent-browser.
 # Only a default: an explicit customer backend choice is preserved. Hermes since v0.22.6 has one
-# browser and no such key, so there the "off" an earlier boot wrote goes.
+# browser and no such key, so there the "off" an earlier boot wrote goes. That Hermes also reads
+# browser.headed from this file and not AGENT_BROWSER_HEADED, which the control plane sets per
+# consumer tier on every boot, so the env value is carried over here.
 browser_config = as_object(config.get("browser"))
 if os.path.exists("/usr/local/bin/agent-browser"):
     if not as_non_empty_string(browser_config.get("backend")):
         browser_config["backend"] = "off"
-elif browser_config.get("backend") in ("off", False):
-    del browser_config["backend"]
+else:
+    if browser_config.get("backend") in ("off", False):
+        del browser_config["backend"]
+    if os.environ.get("AGENT_BROWSER_HEADED") in ("0", "1"):
+        browser_config["headed"] = os.environ["AGENT_BROWSER_HEADED"] == "1"
 if browser_config:
     config["browser"] = browser_config
 else:
