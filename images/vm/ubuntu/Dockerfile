@@ -25,7 +25,11 @@ ARG DEBIAN_FRONTEND=noninteractive
 # the screen resizes to the browser window instead of letterboxing a fixed geometry.
 # xfce4-screensaver is deliberately absent (and `--no-install-recommends` keeps it out): a
 # lock screen on an account with no password is a box nobody can get back into.
+#
+# `upgrade` runs first so that every publish also carries Ubuntu's security fixes for the
+# packages the base image already ships, and not only for the ones installed here.
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
         docker.io docker-compose-v2 docker-buildx \
         ca-certificates curl git kmod iproute2 less sudo tini \
