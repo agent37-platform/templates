@@ -36,7 +36,7 @@ log() {
 # be sold Agent37 directly. The starter token prefix is the product line (`ocst.` consumer,
 # `a37st.` B2B), the same gate the OpenClaw and Hermes environment plugins use.
 consumer_instance() {
-  case "${AGENT37_STARTER_TOKEN:-}" in
+  case "${AGENT37_MANAGED_TOKEN:-${AGENT37_STARTER_TOKEN:-}}" in
     ocst.*) return 0 ;;
     *) return 1 ;;
   esac

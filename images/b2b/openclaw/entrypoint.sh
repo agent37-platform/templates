@@ -27,13 +27,14 @@ FILEBROWSER_PORT="${AGENT37_FILEBROWSER_PORT:-8080}"
 FILEBROWSER_ROOT="${AGENT37_FILEBROWSER_ROOT:-${HOME}}"
 FILEBROWSER_DB_PATH="${AGENT37_FILEBROWSER_DB_PATH:-${HOME}/.agent37/filebrowser.db}"
 
-# Managed credentials arrive as AGENT37_MANAGED_TOKEN / AGENT37_LLM_PROXY_URL (the documented
-# names; the STARTER names are deprecated aliases still injected for older platform releases —
-# docs/partial-starter-proxy-migration.md). Map them onto the OPENCLAW_STARTER_* names the OpenClaw
-# runtime and its managed plugins read.
+# Managed credentials arrive as AGENT37_MANAGED_TOKEN / AGENT37_LLM_PROXY_URL, the documented
+# names and the only ones a new account's instance carries; the STARTER names are deprecated
+# aliases older accounts still get.
 # Each managed service carries its own URL: never derive one by joining a path onto another's.
 LLM_PROXY_URL="${AGENT37_LLM_PROXY_URL:-${AGENT37_STARTER_PROXY_URL:-${OPENCLAW_STARTER_PROXY_URL:-}}}"
-STARTER_PROXY_URL="${AGENT37_STARTER_PROXY_URL:-${OPENCLAW_STARTER_PROXY_URL:-}}"
+# What OpenClaw's own config points at. An instance that carries an alias keeps the address
+# already saved in its config.
+STARTER_PROXY_URL="${AGENT37_STARTER_PROXY_URL:-${OPENCLAW_STARTER_PROXY_URL:-${LLM_PROXY_URL}}}"
 BRAVE_PROXY_URL="${AGENT37_BRAVE_PROXY_URL:-${OPENCLAW_BRAVE_PROXY_URL:-}}"
 STARTER_TOKEN="${AGENT37_MANAGED_TOKEN:-${AGENT37_STARTER_TOKEN:-${OPENCLAW_STARTER_TOKEN:-}}}"
 STARTER_PROVIDER_ID="${OPENCLAW_STARTER_PROVIDER_ID:-agent37}"
@@ -98,16 +99,9 @@ build_runtime_env_assignments() {
     "OPENCLAW_STATE_DIR=${OPENCLAW_STATE_DIR}"
     "OPENCLAW_PYTHON_VENV=${PYTHON_VENV_PATH}"
     "OPENCLAW_GATEWAY_PORT=${OPENCLAW_NATIVE_LOOPBACK_PORT}"
-    "OPENCLAW_STARTER_PROXY_URL=${STARTER_PROXY_URL}"
-    "OPENCLAW_STARTER_TOKEN=${STARTER_TOKEN}"
-    "OPENCLAW_STARTER_PROVIDER_ID=${STARTER_PROVIDER_ID}"
-    "OPENCLAW_STARTER_MODEL_ID=${STARTER_MODEL_ID}"
     "AGENT37_MANAGED_TOKEN=${STARTER_TOKEN}"
     "AGENT37_LLM_PROXY_URL=${LLM_PROXY_URL}"
-    "AGENT37_STARTER_PROXY_URL=${STARTER_PROXY_URL}"
-    "AGENT37_STARTER_TOKEN=${STARTER_TOKEN}"
     "AGENT37_BRAVE_PROXY_URL=${BRAVE_PROXY_URL}"
-    "OPENCLAW_BRAVE_PROXY_URL=${BRAVE_PROXY_URL}"
     "AGENT37_MANAGED_PLUGIN_COMPOSIO_ENABLED=${MANAGED_PLUGIN_COMPOSIO_ENABLED}"
     "PATH=${PATH}"
   )

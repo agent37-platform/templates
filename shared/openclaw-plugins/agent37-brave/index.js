@@ -19,7 +19,7 @@ function resolveBraveProxyUrl() {
 
 function getRuntimeConfig() {
   const proxyUrl = resolveBraveProxyUrl();
-  const starterToken = readEnv('OPENCLAW_STARTER_TOKEN');
+  const starterToken = readEnv('AGENT37_MANAGED_TOKEN') || readEnv('OPENCLAW_STARTER_TOKEN');
   if (!proxyUrl || !starterToken) return null;
   return { proxyUrl, starterToken };
 }

@@ -10,6 +10,10 @@ function envPresent(name) {
   return Boolean(String(process.env[name] || '').trim());
 }
 
+function managedToken() {
+  return String(process.env.AGENT37_MANAGED_TOKEN || process.env.AGENT37_STARTER_TOKEN || '').trim();
+}
+
 const COMPOSIO_CONTEXT = `
 
 - Third-party SaaS integrations (Composio). Composio is the platform's managed OAuth path for general SaaS APIs, wired in as the \`composio\` MCP server. Its tools are self-describing — discover them from that server; do not assume tool names.
@@ -51,7 +55,7 @@ const CONSUMER_HOSTING_CONTEXT = `
 // once the cron CLI shipped into the B2B images too, and it is the sharper gate anyway:
 // `agent37 expose` is exactly what the starter endpoint 403s on a B2B token.
 function consumerInstance() {
-  return String(process.env.AGENT37_STARTER_TOKEN || '').trim().startsWith('ocst.');
+  return managedToken().startsWith('ocst.');
 }
 
 function hostingContext() {
@@ -99,8 +103,8 @@ Platform-specific capabilities:${hostingContext()}${HOOK_CONTEXT}${cronContext()
 const composioConfigured =
   envTruthy('AGENT37_MANAGED_INTEGRATIONS') &&
   envTruthy('AGENT37_MANAGED_PLUGIN_COMPOSIO_ENABLED') &&
-  envPresent('AGENT37_STARTER_PROXY_URL') &&
-  envPresent('AGENT37_STARTER_TOKEN');
+  (envPresent('AGENT37_LLM_PROXY_URL') || envPresent('AGENT37_STARTER_PROXY_URL')) &&
+  Boolean(managedToken());
 
 const PROMPT_CONTEXT = `${BASE_CONTEXT}${composioConfigured ? COMPOSIO_CONTEXT : ''}
 </agent37-environment>`;

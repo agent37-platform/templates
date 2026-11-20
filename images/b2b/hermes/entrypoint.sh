@@ -21,11 +21,13 @@ FILEBROWSER_ROOT="${AGENT37_FILEBROWSER_ROOT:-${HOME}}"
 FILEBROWSER_DB_PATH="${AGENT37_FILEBROWSER_DB_PATH:-${HOME}/.agent37/filebrowser.db}"
 DISPLAY="${DISPLAY:-:99}"
 SCREEN_GEOMETRY="${AGENT37_SCREEN_GEOMETRY:-1440x900x24}"
-# AGENT37_LLM_PROXY_URL / AGENT37_MANAGED_TOKEN are the documented names; the STARTER names are
-# deprecated aliases still injected for older platform releases (docs/partial-starter-proxy-migration.md).
+# AGENT37_LLM_PROXY_URL / AGENT37_MANAGED_TOKEN are the documented names, and the only ones a new
+# account's instance carries; the STARTER names are deprecated aliases older accounts still get.
 # Each managed service carries its own URL: never derive one by joining a path onto another's.
 LLM_PROXY_URL="${AGENT37_LLM_PROXY_URL:-${AGENT37_STARTER_PROXY_URL:-}}"
-STARTER_PROXY_URL="${AGENT37_STARTER_PROXY_URL:-}"
+# What Hermes' own config points at. An instance that carries the alias keeps the address
+# already saved in its config.
+STARTER_PROXY_URL="${AGENT37_STARTER_PROXY_URL:-${LLM_PROXY_URL}}"
 STARTER_TOKEN="${AGENT37_MANAGED_TOKEN:-${AGENT37_STARTER_TOKEN:-}}"
 STARTER_MODEL_ID="${AGENT37_STARTER_MODEL_ID:-default}"
 BRAVE_PROXY_URL="${AGENT37_BRAVE_PROXY_URL:-}"
@@ -144,8 +146,6 @@ build_runtime_env_assignments() {
     "PYTHONUSERBASE=${PYTHON_USER_BASE}"
     "AGENT37_MANAGED_TOKEN=${STARTER_TOKEN}"
     "AGENT37_LLM_PROXY_URL=${LLM_PROXY_URL}"
-    "AGENT37_STARTER_PROXY_URL=${STARTER_PROXY_URL}"
-    "AGENT37_STARTER_TOKEN=${STARTER_TOKEN}"
     "AGENT37_BRAVE_PROXY_URL=${BRAVE_PROXY_URL}"
     "AGENT37_HERMES_BRAVE_ENABLED=${HERMES_BRAVE_ENABLED}"
     "AGENT37_HERMES_COMPOSIO_ENABLED=${HERMES_COMPOSIO_ENABLED}"

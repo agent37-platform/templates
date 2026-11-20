@@ -19,8 +19,13 @@ function fail(code, message) {
 }
 
 function starterToken() {
-  const token = (process.env.AGENT37_STARTER_TOKEN || process.env.OPENCLAW_STARTER_TOKEN || '').trim();
-  if (!token) fail('MISSING_TOKEN', 'No starter token in the environment (AGENT37_STARTER_TOKEN).');
+  const token = (
+    process.env.AGENT37_MANAGED_TOKEN ||
+    process.env.AGENT37_STARTER_TOKEN ||
+    process.env.OPENCLAW_STARTER_TOKEN ||
+    ''
+  ).trim();
+  if (!token) fail('MISSING_TOKEN', 'No managed token in the environment (AGENT37_MANAGED_TOKEN).');
   return token;
 }
 
