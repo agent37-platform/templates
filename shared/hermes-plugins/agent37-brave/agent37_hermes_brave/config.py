@@ -3,8 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 
-CANONICAL_STARTER_TOKEN_ENV = "AGENT37_STARTER_TOKEN"
-FALLBACK_STARTER_TOKEN_ENV = "OPENCLAW_STARTER_TOKEN"
+MANAGED_TOKEN_ENVS = ("AGENT37_MANAGED_TOKEN", "AGENT37_STARTER_TOKEN", "OPENCLAW_STARTER_TOKEN")
 CANONICAL_BRAVE_PROXY_URL_ENV = "AGENT37_BRAVE_PROXY_URL"
 FALLBACK_BRAVE_PROXY_URL_ENV = "OPENCLAW_BRAVE_PROXY_URL"
 PLUGIN_ENABLED_ENV = "AGENT37_HERMES_BRAVE_ENABLED"
@@ -55,10 +54,7 @@ def resolve_runtime_config() -> BraveRuntimeConfig | None:
         return None
 
     proxy_url = _resolve_proxy_url()
-    starter_token = _read_env(
-        CANONICAL_STARTER_TOKEN_ENV,
-        FALLBACK_STARTER_TOKEN_ENV,
-    )
+    starter_token = _read_env(*MANAGED_TOKEN_ENVS)
     if not proxy_url or not starter_token:
         return None
 

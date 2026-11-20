@@ -11,6 +11,10 @@ def _env_truthy(name: str) -> bool:
 def _env_present(name: str) -> bool:
     return bool(os.environ.get(name, "").strip())
 
+
+def _managed_token() -> str:
+    return (os.environ.get("AGENT37_MANAGED_TOKEN") or os.environ.get("AGENT37_STARTER_TOKEN") or "").strip()
+
 _BASE_CONTEXT = """\
 <agent37-environment>
 You are running inside a managed agent hosting platform.
@@ -75,7 +79,7 @@ def _consumer_instance() -> bool:
     # `which("agent37")` check once the cron CLI shipped into the B2B images too, and it is the
     # sharper gate anyway: `agent37 expose` is exactly what the starter endpoint 403s on a
     # B2B token.
-    return os.environ.get("AGENT37_STARTER_TOKEN", "").strip().startswith("ocst.")
+    return _managed_token().startswith("ocst.")
 
 
 def _build_prompt_context() -> str:
@@ -90,8 +94,8 @@ def _build_prompt_context() -> str:
     composio_configured = (
         _env_truthy("AGENT37_MANAGED_INTEGRATIONS")
         and _env_truthy("AGENT37_HERMES_COMPOSIO_ENABLED")
-        and _env_present("AGENT37_STARTER_PROXY_URL")
-        and _env_present("AGENT37_STARTER_TOKEN")
+        and (_env_present("AGENT37_LLM_PROXY_URL") or _env_present("AGENT37_STARTER_PROXY_URL"))
+        and bool(_managed_token())
     )
     composio = _COMPOSIO_CONTEXT if composio_configured else ""
     # The platform pitch is for consumer instances only: a B2B customer's own end users must
