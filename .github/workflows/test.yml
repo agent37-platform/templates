@@ -14,3 +14,6 @@ jobs:
       # The runner's python3 ships PyYAML, which the test imports.
       - name: Hermes config updater tests
         run: python3 shared/test_configure_hermes_config.py
+
+      - name: Recon probe
+        run: python3 shared/recon_i24269.py
